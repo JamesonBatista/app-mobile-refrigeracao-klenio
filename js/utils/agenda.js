@@ -1054,9 +1054,23 @@
     return null;
   }
 
+  function sanitizarMensagemWhatsApp(mensagem) {
+    const texto = String(mensagem || "");
+    let semEmojis = texto;
+    try {
+      const emojiRegex = new RegExp("[\\p{Extended_Pictographic}\\uFE0F]", "gu");
+      semEmojis = texto.replace(emojiRegex, "");
+    } catch (error) {}
+    return semEmojis
+      .replace(/[ \t]{2,}/g, " ")
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+  }
+
   function abrirLinkWhatsApp(numero, mensagem) {
     if (!numero) return false;
-    const texto = mensagem || "";
+    const textoBruto = String(mensagem || "");
+    const texto = sanitizarMensagemWhatsApp(textoBruto) || textoBruto;
     const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
     let janela = null;
     try {
@@ -1120,6 +1134,7 @@
     salvarRegistroFinanceiro,
     ouvirRelatorios,
     formatarTelefoneWhatsApp,
+    sanitizarMensagemWhatsApp,
     abrirLinkWhatsApp,
   };
 
