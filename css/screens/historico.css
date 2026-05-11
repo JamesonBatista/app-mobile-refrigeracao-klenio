@@ -1,0 +1,227 @@
+/* css/screens/historico.css */
+
+.hc-screen {
+  position: relative;
+  min-height: 100dvh;
+  background: #0a1628;
+  overflow: hidden;
+}
+
+.hc-fundos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.hc-floco {
+  position: absolute;
+  top: -30px;
+  left: var(--x);
+  color: rgba(180, 220, 255, 0.7);
+  font-size: var(--size);
+  opacity: 0;
+  animation: hcFlocoFall var(--dur) linear infinite;
+  animation-delay: var(--delay);
+}
+
+@keyframes hcFlocoFall {
+  0% {
+    transform: translateY(-30px);
+    opacity: 0;
+  }
+  15% {
+    opacity: var(--opacity);
+  }
+  85% {
+    opacity: var(--opacity);
+  }
+  100% {
+    transform: translateY(110dvh);
+    opacity: 0;
+  }
+}
+
+.hc-scroll {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 700px;
+  margin: 0 auto;
+  padding: 20px 16px 28px;
+}
+
+.hc-info-box {
+  border-radius: 12px;
+  border: 1px solid rgba(56, 182, 255, 0.15);
+  background: rgba(56, 182, 255, 0.06);
+  padding: 12px;
+  margin-bottom: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.hc-info-emoji {
+  font-size: 18px;
+}
+
+.hc-info-box p {
+  color: rgba(180, 220, 255, 0.6);
+  font-size: 12px;
+}
+
+.hc-filtros {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-bottom: 14px;
+}
+
+.hc-filtro-btn {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(180, 220, 255, 0.5);
+  font-size: 12px;
+  padding: 6px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  cursor: pointer;
+}
+
+.hc-filtro-btn.is-active {
+  border-width: 1.5px;
+  border-color: #38b6ff;
+  background: rgba(56, 182, 255, 0.15);
+  color: #38b6ff;
+  font-weight: 700;
+}
+
+.hc-filtro-count {
+  min-width: 18px;
+  border-radius: 8px;
+  padding: 1px 5px;
+  text-align: center;
+  font-size: 10px;
+  font-weight: 700;
+  color: inherit;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.hc-filtro-btn.is-active .hc-filtro-count {
+  background: rgba(56, 182, 255, 0.2);
+}
+
+.hc-loading {
+  display: grid;
+  place-items: center;
+  padding: 40px 0;
+}
+
+.hc-empty {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.hc-empty-icon {
+  font-size: 48px;
+}
+
+.hc-empty-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.hc-empty-sub {
+  color: rgba(180, 220, 255, 0.5);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.hc-card {
+  border-radius: 14px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.05);
+  padding: 14px;
+  margin-bottom: 10px;
+}
+
+.hc-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  margin-bottom: 10px;
+}
+
+.hc-card-head-left {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.hc-chip-tipo {
+  border-radius: 8px;
+  border: 1px solid;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.hc-numero {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.hc-chip-status {
+  border-radius: 16px;
+  padding: 4px 8px;
+  font-size: 11px;
+  font-weight: 600;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.hc-info-list {
+  display: grid;
+  gap: 5px;
+}
+
+.hc-row {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 13px;
+  font-weight: 600;
+}
+
+.hc-row span:last-child {
+  flex: 1;
+}
+
+.hc-row.hc-muted {
+  color: rgba(180, 220, 255, 0.7);
+  font-weight: 400;
+}
+
+.hc-row.hc-price {
+  color: #8e44ad;
+  font-weight: 700;
+}
+
+.hc-row.hc-success {
+  color: #27ae60;
+}
+
+.hc-row.hc-footer {
+  margin-top: 2px;
+  color: rgba(180, 220, 255, 0.4);
+  font-size: 12px;
+}
