@@ -133,10 +133,16 @@
                 <p class="ac-fotos-label">📷 ${chamado.fotos.length} foto${chamado.fotos.length > 1 ? "s" : ""} enviada${chamado.fotos.length > 1 ? "s" : ""}</p>
                 <div class="ac-fotos-row">
                   ${chamado.fotos.map((uri, fotoIndex) => `
-                    <span class="ac-foto-item">
-                      <img class="ac-foto-thumb" src="${uri}" alt="Foto ${fotoIndex + 1}" data-action="expandir-foto" data-call="${index}" data-foto="${fotoIndex}" />
+                    <button
+                      class="ac-foto-item"
+                      type="button"
+                      data-action="expandir-foto"
+                      data-call="${index}"
+                      data-foto="${fotoIndex}"
+                    >
+                      <img class="ac-foto-thumb" src="${uri}" alt="Foto ${fotoIndex + 1}" />
                       <span class="ac-foto-zoom">🔍</span>
-                    </span>
+                    </button>
                   `).join("")}
                 </div>
               </div>
@@ -206,7 +212,7 @@
       }
 
       root.querySelector("#ac-container").addEventListener("click", function (event) {
-        const target = event.target.closest("button, img");
+        const target = event.target.closest("[data-action]");
         if (!target) return;
         const action = target.dataset.action;
         if (!action) return;

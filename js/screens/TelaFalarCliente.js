@@ -143,7 +143,11 @@
         `${state.mensagem.trim()}\n\n` +
         `Klenio Refrigeração ❄`;
 
-      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(textoFinal)}`, "_blank");
+      if (typeof window.abrirLinkWhatsApp === "function") {
+        window.abrirLinkWhatsApp(numero, textoFinal);
+      } else {
+        window.open(`https://wa.me/${numero}?text=${encodeURIComponent(textoFinal)}`, "_blank");
+      }
     }
 
     function bindEvents() {

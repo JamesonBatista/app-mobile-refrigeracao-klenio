@@ -208,7 +208,11 @@
   function notificarWA(programado, mensagem) {
     const numero = formatarTelefoneWhatsApp(programado.clienteTelefone);
     if (!numero) return;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(numero, mensagem);
+    } else {
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
   }
 
   function perguntarWA(programado, mensagem, onDepois) {

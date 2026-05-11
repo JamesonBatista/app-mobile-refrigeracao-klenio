@@ -174,7 +174,11 @@
       `🕐 Horário: ${item.horario || "-"}\n\n` +
       `📨 Resposta:\n${respostaTexto}\n\n` +
       `Klenio Refrigeração ❄`;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, "_blank");
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(numero, msg);
+    } else {
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(msg)}`, "_blank");
+    }
   }
 
   function badgeHtml(count) {
@@ -219,7 +223,6 @@
       historicoExpandido: {},
       unsubscribers: [],
       fallbackIntervals: [],
-      refreshTimer: null,
     };
 
     function ordenarPorUrgencia(lista) {
@@ -242,7 +245,6 @@
         (item) => item.status === "Concluído" || item.status === "Cancelado"
       );
       state.carregando = false;
-      state.refreshing = false;
       render();
     }
 
@@ -263,6 +265,38 @@
         (item) => item.status === "Aguardando análise" || item.status === "Em análise"
       ).length;
       render();
+    }
+
+    async function atualizarDadosPainel(mostrarLoading) {
+      if (mostrarLoading) {
+        state.refreshing = true;
+        render();
+      }
+
+      try {
+        const [chamados, programados, orcamentos] = await Promise.all([
+          typeof window.carregarChamados === "function"
+            ? window.carregarChamados()
+            : Promise.resolve(parseArrayStorage("@chamados")),
+          typeof window.carregarTodosProgramados === "function"
+            ? window.carregarTodosProgramados()
+            : Promise.resolve(parseArrayStorage("@programados")),
+          typeof window.carregarTodosOrcamentos === "function"
+            ? window.carregarTodosOrcamentos()
+            : Promise.resolve(parseArrayStorage("@orcamentos")),
+        ]);
+
+        processarChamados(chamados);
+        processarProgramados(programados);
+        processarOrcamentos(orcamentos);
+      } catch (error) {
+        console.log("Erro atualizar painel:", error);
+      } finally {
+        if (mostrarLoading) {
+          state.refreshing = false;
+          render();
+        }
+      }
     }
 
     function subscribeChamados() {
@@ -335,7 +369,7 @@
       const ok = window.confirm(`Deseja marcar o chamado ${numero} como ${novaUrgencia}?`);
       if (!ok) return;
       await atualizarChamadoSafe(numero, { urgencia: novaUrgencia });
-      processarChamados(parseArrayStorage("@chamados"));
+      await atualizarDadosPainel(false);
     }
 
     async function handleExcluirChamado(numero) {
@@ -347,7 +381,7 @@
       if (!ok) return;
       try {
         await marcarChamadoExcluidoSafe(chamado);
-        processarChamados(parseArrayStorage("@chamados"));
+        await atualizarDadosPainel(false);
       } catch (error) {
         window.alert("Não foi possível excluir o chamado.");
       }
@@ -371,6 +405,7 @@
       state.salvando = false;
       state.respondendo = null;
       state.textoResposta = "";
+      await atualizarDadosPainel(false);
       render();
 
       const avisarWhats = window.confirm("📲 Notificar cliente?\nDeseja enviar a resposta via WhatsApp?");
@@ -617,16 +652,7 @@
         }
 
         if (action === "refresh") {
-          state.refreshing = true;
-          render();
-          if (state.refreshTimer) clearTimeout(state.refreshTimer);
-          state.refreshTimer = setTimeout(function () {
-            processarChamados(parseArrayStorage("@chamados"));
-            processarProgramados(parseArrayStorage("@programados"));
-            processarOrcamentos(parseArrayStorage("@orcamentos"));
-            state.refreshing = false;
-            render();
-          }, 700);
+          atualizarDadosPainel(true);
           return;
         }
 
@@ -882,7 +908,6 @@
         } catch (error) {}
       });
       state.fallbackIntervals.forEach((interval) => clearInterval(interval));
-      if (state.refreshTimer) clearTimeout(state.refreshTimer);
     };
   }
 

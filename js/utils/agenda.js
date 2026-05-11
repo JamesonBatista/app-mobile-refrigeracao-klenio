@@ -202,9 +202,11 @@
     if (!collection) return parseArrayStorage(STORAGE_KEYS.chamados);
     try {
       const snapshot = await collection.get();
-      return snapshot.docs.map(function (doc) {
+      const lista = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
+      setArrayStorage(STORAGE_KEYS.chamados, lista);
+      return lista;
     } catch (error) {
       console.log("Erro carregarChamados:", error);
       return parseArrayStorage(STORAGE_KEYS.chamados);
@@ -219,6 +221,7 @@
     }
     try {
       await collection.doc(chamado.numero).set(chamado);
+      upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
     } catch (error) {
       console.log("Erro salvarChamado:", error);
       upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
@@ -233,6 +236,7 @@
     }
     try {
       await collection.doc(numero).update(updates);
+      updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     } catch (error) {
       console.log("Erro atualizarChamado:", error);
       updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
@@ -265,11 +269,13 @@
       const dados = doc && doc.exists ? doc.data() : {};
       const historico = Array.isArray(dados.historicoStatus) ? [...dados.historicoStatus] : [];
       historico.push({ status: novoStatus, data, hora, iso });
-      await collection.doc(numero).update({
+      const payload = {
         status: novoStatus,
         historicoStatus: historico,
         [`timestamp_${novoStatus.replace(/ /g, "_")}`]: iso,
-      });
+      };
+      await collection.doc(numero).update(payload);
+      updateByField(STORAGE_KEYS.chamados, "numero", numero, payload);
     } catch (error) {
       console.log("Erro registrarMudancaStatus:", error);
       await atualizarChamado(numero, {
@@ -323,6 +329,7 @@
         const lista = snapshot.docs.map(function (doc) {
           return { id: doc.id, ...doc.data() };
         });
+        setArrayStorage(STORAGE_KEYS.chamados, lista);
         callback(lista);
       });
     }
@@ -374,6 +381,7 @@
       snapshot.docs.forEach(function (doc) {
         bloqueios[doc.id] = doc.data().horarios || [];
       });
+      setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
       return bloqueios;
     } catch (error) {
       console.log("Erro carregarBloqueios:", error);
@@ -391,6 +399,9 @@
     }
     try {
       await collection.doc(chave).set({ horarios });
+      const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
+      bloqueios[chave] = Array.isArray(horarios) ? horarios : [];
+      setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
     } catch (error) {
       console.log("Erro salvarBloqueio:", error);
     }
@@ -418,6 +429,11 @@
         });
         if (novos.length === 0) await collection.doc(chave).delete();
         else await collection.doc(chave).set({ horarios: novos });
+
+        const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
+        if (novos.length === 0) delete bloqueios[chave];
+        else bloqueios[chave] = novos;
+        setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
       }
     } catch (error) {
       console.log("Erro removerBloqueio:", error);
@@ -432,6 +448,7 @@
         snapshot.docs.forEach(function (doc) {
           bloqueios[doc.id] = doc.data().horarios || [];
         });
+        setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
         callback(bloqueios);
       });
     }
@@ -558,9 +575,11 @@
     if (!collection) return consolidarClientesLocais();
     try {
       const snapshot = await collection.get();
-      return snapshot.docs.map(function (doc) {
+      const lista = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
+      setArrayStorage(STORAGE_KEYS.clientes, lista);
+      return lista;
     } catch (error) {
       console.log("Erro carregarClientes:", error);
       return consolidarClientesLocais();
@@ -575,6 +594,7 @@
     }
     try {
       await collection.doc(programado.numero).set(programado);
+      upsertByField(STORAGE_KEYS.programados, "numero", programado.numero, programado);
     } catch (error) {
       console.log("Erro salvarProgramado:", error);
       upsertByField(STORAGE_KEYS.programados, "numero", programado.numero, programado);
@@ -596,6 +616,22 @@
     } catch (error) {
       console.log("Erro carregarProgramados:", error);
       return [];
+    }
+  }
+
+  async function carregarTodosProgramados() {
+    const collection = getDbCollection("programados");
+    if (!collection) return parseArrayStorage(STORAGE_KEYS.programados);
+    try {
+      const snapshot = await collection.get();
+      const lista = snapshot.docs.map(function (doc) {
+        return { id: doc.id, ...doc.data() };
+      });
+      setArrayStorage(STORAGE_KEYS.programados, lista);
+      return lista;
+    } catch (error) {
+      console.log("Erro carregarTodosProgramados:", error);
+      return parseArrayStorage(STORAGE_KEYS.programados);
     }
   }
 
@@ -627,6 +663,7 @@
         const lista = snapshot.docs.map(function (doc) {
           return { id: doc.id, ...doc.data() };
         });
+        setArrayStorage(STORAGE_KEYS.programados, lista);
         callback(lista);
       });
     }
@@ -647,6 +684,7 @@
     }
     try {
       await collection.doc(numero).update(updates);
+      updateByField(STORAGE_KEYS.programados, "numero", numero, updates);
     } catch (error) {
       console.log("Erro atualizarProgramado:", error);
       updateByField(STORAGE_KEYS.programados, "numero", numero, updates);
@@ -674,7 +712,9 @@
       const dados = doc.data();
       const historico = dados && Array.isArray(dados.historico) ? [...dados.historico] : [];
       historico.push({ tipo: "contestacao", mensagem: motivo, data, hora });
-      await collection.doc(numero).update({ status: "Contestado", historico });
+      const payload = { status: "Contestado", historico };
+      await collection.doc(numero).update(payload);
+      updateByField(STORAGE_KEYS.programados, "numero", numero, payload);
     } catch (error) {
       console.log("Erro contestarProgramado:", error);
     }
@@ -701,7 +741,9 @@
       const dados = doc.data();
       const historico = dados && Array.isArray(dados.historico) ? [...dados.historico] : [];
       historico.push({ tipo: "resposta", mensagem: resposta, data, hora });
-      await collection.doc(numero).update({ status: "Respondido", historico });
+      const payload = { status: "Respondido", historico };
+      await collection.doc(numero).update(payload);
+      updateByField(STORAGE_KEYS.programados, "numero", numero, payload);
     } catch (error) {
       console.log("Erro responderContestacao:", error);
     }
@@ -744,6 +786,7 @@
     }
     try {
       await collection.doc(numero).delete();
+      removeByField(STORAGE_KEYS.programados, "numero", numero);
     } catch (error) {
       console.log("Erro excluirProgramado:", error);
       removeByField(STORAGE_KEYS.programados, "numero", numero);
@@ -762,6 +805,7 @@
     }
     try {
       await collection.doc(orcamento.numero).set(orcamento);
+      upsertByField(STORAGE_KEYS.orcamentos, "numero", orcamento.numero, orcamento);
     } catch (error) {
       console.log("Erro salvarOrcamento:", error);
       upsertByField(STORAGE_KEYS.orcamentos, "numero", orcamento.numero, orcamento);
@@ -776,6 +820,7 @@
     }
     try {
       await collection.doc(numero).update(updates);
+      updateByField(STORAGE_KEYS.orcamentos, "numero", numero, updates);
     } catch (error) {
       console.log("Erro atualizarOrcamento:", error);
       updateByField(STORAGE_KEYS.orcamentos, "numero", numero, updates);
@@ -810,6 +855,7 @@
         const lista = snapshot.docs.map(function (doc) {
           return { id: doc.id, ...doc.data() };
         });
+        setArrayStorage(STORAGE_KEYS.orcamentos, lista);
         callback(lista);
       });
     }
@@ -820,6 +866,22 @@
         return parseArrayStorage(STORAGE_KEYS.orcamentos);
       }
     );
+  }
+
+  async function carregarTodosOrcamentos() {
+    const collection = getDbCollection("orcamentos");
+    if (!collection) return parseArrayStorage(STORAGE_KEYS.orcamentos);
+    try {
+      const snapshot = await collection.get();
+      const lista = snapshot.docs.map(function (doc) {
+        return { id: doc.id, ...doc.data() };
+      });
+      setArrayStorage(STORAGE_KEYS.orcamentos, lista);
+      return lista;
+    } catch (error) {
+      console.log("Erro carregarTodosOrcamentos:", error);
+      return parseArrayStorage(STORAGE_KEYS.orcamentos);
+    }
   }
 
   async function salvarProfissional(profissional) {
@@ -834,6 +896,7 @@
     }
     try {
       await collection.doc(payload.id).set(payload);
+      upsertByField(STORAGE_KEYS.profissionais, "id", payload.id, payload);
     } catch (error) {
       console.log("Erro salvarProfissional:", error);
       upsertByField(STORAGE_KEYS.profissionais, "id", payload.id, payload);
@@ -848,6 +911,7 @@
     }
     try {
       await collection.doc(id).update(updates);
+      updateByField(STORAGE_KEYS.profissionais, "id", id, updates);
     } catch (error) {
       console.log("Erro atualizarProfissional:", error);
       updateByField(STORAGE_KEYS.profissionais, "id", id, updates);
@@ -862,6 +926,7 @@
     }
     try {
       await collection.doc(id).delete();
+      removeByField(STORAGE_KEYS.profissionais, "id", id);
     } catch (error) {
       console.log("Erro excluirProfissional:", error);
       removeByField(STORAGE_KEYS.profissionais, "id", id);
@@ -878,6 +943,7 @@
         lista.sort(function (a, b) {
           return String(a.nome || "").localeCompare(String(b.nome || ""));
         });
+        setArrayStorage(STORAGE_KEYS.profissionais, lista);
         callback(lista);
       });
     }
@@ -943,6 +1009,7 @@
 
     try {
       await collection.doc(registro.id).set(registro);
+      upsertByField(STORAGE_KEYS.relatorios, "id", registro.id, registro);
     } catch (error) {
       console.log("Erro salvarRegistroFinanceiro:", error);
       const lista = parseArrayStorage(STORAGE_KEYS.relatorios);
@@ -960,6 +1027,7 @@
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
+          setArrayStorage(STORAGE_KEYS.relatorios, lista);
           callback(lista);
         });
     }
@@ -979,8 +1047,25 @@
   function formatarTelefoneWhatsApp(telefone) {
     if (!telefone) return null;
     const numeros = String(telefone).replace(/\D/g, "");
+    if ((numeros.length === 12 || numeros.length === 13) && numeros.startsWith("55")) {
+      return numeros;
+    }
     if (numeros.length === 11 || numeros.length === 10) return `55${numeros}`;
     return null;
+  }
+
+  function abrirLinkWhatsApp(numero, mensagem) {
+    if (!numero) return false;
+    const texto = mensagem || "";
+    const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    let janela = null;
+    try {
+      janela = window.open(url, "_blank", "noopener,noreferrer");
+    } catch (error) {}
+    if (!janela) {
+      window.location.href = url;
+    }
+    return true;
   }
 
   const api = {
@@ -1012,6 +1097,7 @@
     carregarClientes,
     salvarProgramado,
     carregarProgramados,
+    carregarTodosProgramados,
     ouvirProgramados,
     ouvirTodosProgramados,
     atualizarProgramado,
@@ -1024,6 +1110,7 @@
     cancelarProgramado,
     salvarOrcamento,
     atualizarOrcamento,
+    carregarTodosOrcamentos,
     ouvirOrcamentosCliente,
     ouvirTodosOrcamentos,
     salvarProfissional,
@@ -1033,6 +1120,7 @@
     salvarRegistroFinanceiro,
     ouvirRelatorios,
     formatarTelefoneWhatsApp,
+    abrirLinkWhatsApp,
   };
 
   window.AgendaService = api;

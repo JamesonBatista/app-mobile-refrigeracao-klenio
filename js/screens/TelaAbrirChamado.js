@@ -587,11 +587,6 @@
     verificarDiasLotados();
 
     return function cleanupAbrirChamado() {
-      urlsCriadas.forEach((uri) => {
-        try {
-          URL.revokeObjectURL(uri);
-        } catch (error) {}
-      });
       urlsCriadas.clear();
     };
   }

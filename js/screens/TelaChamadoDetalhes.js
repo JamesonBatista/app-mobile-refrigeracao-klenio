@@ -165,7 +165,11 @@
   function abrirWhatsApp(chamado, mensagem) {
     const numero = formatarTelefoneWhatsApp(chamado.clienteTelefone);
     if (!numero) return;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(numero, mensagem);
+    } else {
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
   }
 
   function renderTelaChamadoDetalhes(root, props) {

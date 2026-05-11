@@ -411,8 +411,13 @@
 
     root.querySelector("#pr-wpp").addEventListener("click", function () {
       const nome = state.usuarioLogado && state.usuarioLogado.nome ? state.usuarioLogado.nome : "Cliente";
-      const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(`Olá, meu nome é ${nome} e preciso de suporte!`)}`;
-      window.open(url, "_blank");
+      const mensagem = `Olá, meu nome é ${nome} e preciso de suporte!`;
+      if (typeof window.abrirLinkWhatsApp === "function") {
+        window.abrirLinkWhatsApp(WHATSAPP, mensagem);
+      } else {
+        const url = `https://wa.me/${WHATSAPP}?text=${encodeURIComponent(mensagem)}`;
+        window.open(url, "_blank");
+      }
     });
 
     root.querySelector("#pr-ajuda").addEventListener("click", function () {

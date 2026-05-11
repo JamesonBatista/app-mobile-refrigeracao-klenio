@@ -394,7 +394,11 @@
       const enviar = window.confirm(`Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
       if (enviar) {
         const num = normalizarTelefone(state.clienteSelecionado.telefone);
-        if (num) window.open(`https://wa.me/${num}?text=${encodeURIComponent(mensagemWA)}`, "_blank");
+        if (num && typeof window.abrirLinkWhatsApp === "function") {
+          window.abrirLinkWhatsApp(num, mensagemWA);
+        } else if (num) {
+          window.open(`https://wa.me/${num}?text=${encodeURIComponent(mensagemWA)}`, "_blank");
+        }
       }
       if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
     }
@@ -460,7 +464,11 @@
       const enviar = window.confirm(`Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
       if (enviar) {
         const num = normalizarTelefone(state.clienteSelecionado.telefone);
-        if (num) window.open(`https://wa.me/${num}?text=${encodeURIComponent(mensagemWA)}`, "_blank");
+        if (num && typeof window.abrirLinkWhatsApp === "function") {
+          window.abrirLinkWhatsApp(num, mensagemWA);
+        } else if (num) {
+          window.open(`https://wa.me/${num}?text=${encodeURIComponent(mensagemWA)}`, "_blank");
+        }
       }
       if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
     }

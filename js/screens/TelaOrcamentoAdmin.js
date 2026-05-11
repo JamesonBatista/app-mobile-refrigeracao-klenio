@@ -120,7 +120,11 @@
       `💵 Valor: R$ ${orcamento.valorOrcamento}\n` +
       (orcamento.descricaoAdmin ? `📝 Descrição: ${orcamento.descricaoAdmin}\n` : "") +
       `\nAcesse o app para aprovação.\n\nKlenio Refrigeração ❄`;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(numero, mensagem);
+    } else {
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
   }
 
   function notificarWhatsappOrcamentoCancelado(orcamento) {
@@ -134,7 +138,11 @@
       `Olá, ${orcamento.cliente}! 👋\n\n` +
       `🚫 *Seu orçamento ${orcamento.numero} foi cancelado pelo suporte.*\n\n` +
       `Em caso de dúvidas, fale com nossa equipe.\n\nKlenio Refrigeração ❄`;
-    window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(numero, mensagem);
+    } else {
+      window.open(`https://wa.me/${numero}?text=${encodeURIComponent(mensagem)}`, "_blank");
+    }
   }
 
   function ouvirTodosOrcamentosSafe(callback) {
