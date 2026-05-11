@@ -56,14 +56,49 @@
     return "";
   }
 
+  function normalizarEmail(email) {
+    return String(email || "").trim().toLowerCase();
+  }
+
+  function ordenarChamados(lista) {
+    return [...(lista || [])].sort((a, b) => {
+      const aISO = a && a.dataCriacaoISO ? Date.parse(a.dataCriacaoISO) : 0;
+      const bISO = b && b.dataCriacaoISO ? Date.parse(b.dataCriacaoISO) : 0;
+      return bISO - aISO;
+    });
+  }
+
   function getChamadosLocais(email) {
+    const emailNorm = normalizarEmail(email);
     try {
       const raw = localStorage.getItem("@chamados");
       const lista = raw ? JSON.parse(raw) : [];
-      return lista.filter((item) => item.clienteEmail === email);
+      return ordenarChamados(
+        lista.filter((item) => {
+          const clienteEmail = normalizarEmail(item && item.clienteEmail);
+          return clienteEmail === emailNorm;
+        })
+      );
     } catch (error) {
       return [];
     }
+  }
+
+  function combinarChamados(remotos, email) {
+    const locais = getChamadosLocais(email);
+    const mapa = new Map();
+
+    locais.forEach((item) => {
+      const chave = item && item.numero ? String(item.numero) : `local-${Math.random()}`;
+      mapa.set(chave, item);
+    });
+
+    (remotos || []).forEach((item) => {
+      const chave = item && item.numero ? String(item.numero) : `remoto-${Math.random()}`;
+      mapa.set(chave, item);
+    });
+
+    return ordenarChamados(Array.from(mapa.values()));
   }
 
   function renderTelaAcompanharChamado(root, props) {
@@ -341,9 +376,13 @@
         return;
       }
 
+      state.chamados = getChamadosLocais(usuarioLogado.email);
+      state.carregando = false;
+      render();
+
       if (typeof window.ouvirChamadosCliente === "function") {
         const unsub = window.ouvirChamadosCliente(usuarioLogado.email, function (lista) {
-          state.chamados = lista || [];
+          state.chamados = combinarChamados(lista, usuarioLogado.email);
           state.carregando = false;
           render();
         });
@@ -351,8 +390,7 @@
         return;
       }
 
-      state.chamados = getChamadosLocais(usuarioLogado.email);
-      state.carregando = false;
+      state.chamados = combinarChamados([], usuarioLogado.email);
       render();
     }
 

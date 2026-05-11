@@ -184,6 +184,19 @@
   opacity: 0.65;
 }
 
+.ch-btn-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.ch-btn-inline-loading .ch-spinner {
+  margin: 0;
+  width: 16px;
+  height: 16px;
+}
+
 .ch-spinner {
   width: 22px;
   height: 22px;

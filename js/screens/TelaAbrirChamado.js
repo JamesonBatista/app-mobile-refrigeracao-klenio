@@ -582,7 +582,11 @@
             </article>
 
             <button class="ch-btn-main" id="ab-abrir-chamado" type="button" ${state.carregando ? "disabled" : ""}>
-              ${state.carregando ? '<span class="ch-spinner"></span>' : "🔧 Abrir Chamado"}
+              ${
+                state.carregando
+                  ? '<span class="ch-btn-inline-loading"><span class="ch-spinner"></span><span>Abrindo chamado...</span></span>'
+                  : "🔧 Abrir Chamado"
+              }
             </button>
 
             <div style="height:20px"></div>
