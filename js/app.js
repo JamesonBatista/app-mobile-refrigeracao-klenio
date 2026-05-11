@@ -9,6 +9,7 @@
     chamadoClienteSelecionado: null,
     programadoSelecionado: null,
     orcamentoParaAprovar: null,
+    cleanupTelaAtual: null,
   };
 
   const notificationListener = { current: null };
@@ -227,6 +228,13 @@
   }
 
   function renderTelaAtual() {
+    if (typeof appState.cleanupTelaAtual === "function") {
+      try {
+        appState.cleanupTelaAtual();
+      } catch (error) {}
+      appState.cleanupTelaAtual = null;
+    }
+
     const nomeTela = appState.tela;
     const app = document.getElementById("app");
     if (!app) return;
@@ -237,7 +245,12 @@
     const props = montarPropsTela(nomeTela);
     const renderer = obterRendererTela(nomeTela);
     if (typeof renderer === "function") {
-      renderer(root, props);
+      const cleanup = renderer(root, props);
+      if (typeof cleanup === "function") {
+        appState.cleanupTelaAtual = cleanup;
+      } else if (typeof root.__cleanup === "function") {
+        appState.cleanupTelaAtual = root.__cleanup;
+      }
     } else {
       renderPlaceholderTela(root, nomeTela, props);
     }
@@ -267,6 +280,13 @@
   }
 
   function limparListenersNotificacao() {
+    if (typeof appState.cleanupTelaAtual === "function") {
+      try {
+        appState.cleanupTelaAtual();
+      } catch (error) {}
+      appState.cleanupTelaAtual = null;
+    }
+
     if (typeof notificationListener.current === "function") {
       notificationListener.current();
     }
