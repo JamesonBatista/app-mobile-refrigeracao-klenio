@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <meta name="theme-color" content="#060e1f" />
+  <title>Klenio Refrigeração</title>
+  <link rel="manifest" href="manifest.json" />
+
+  <!-- CSS base -->
+  <link rel="stylesheet" href="css/variables.css" />
+  <link rel="stylesheet" href="css/reset.css" />
+  <link rel="stylesheet" href="css/components.css" />
+
+  <!-- CSS das telas -->
+  <link rel="stylesheet" href="css/screens/splash.css" />
+  <link rel="stylesheet" href="css/screens/inicial.css" />
+  <link rel="stylesheet" href="css/screens/login.css" />
+  <link rel="stylesheet" href="css/screens/cadastro.css" />
+  <link rel="stylesheet" href="css/screens/recuperarSenha.css" />
+  <link rel="stylesheet" href="css/screens/principal.css" />
+  <link rel="stylesheet" href="css/screens/abrirChamado.css" />
+  <link rel="stylesheet" href="css/screens/acompanharChamado.css" />
+  <link rel="stylesheet" href="css/screens/detalheChamadoCliente.css" />
+  <link rel="stylesheet" href="css/screens/painelAdmin.css" />
+  <link rel="stylesheet" href="css/screens/chamadoDetalhes.css" />
+  <link rel="stylesheet" href="css/screens/agendaAdmin.css" />
+  <link rel="stylesheet" href="css/screens/perfil.css" />
+  <link rel="stylesheet" href="css/screens/abrirProgramado.css" />
+  <link rel="stylesheet" href="css/screens/programadoCliente.css" />
+  <link rel="stylesheet" href="css/screens/editarProgramado.css" />
+  <link rel="stylesheet" href="css/screens/orcamento.css" />
+  <link rel="stylesheet" href="css/screens/meusOrcamentos.css" />
+  <link rel="stylesheet" href="css/screens/aprovarOrcamento.css" />
+  <link rel="stylesheet" href="css/screens/orcamentoAdmin.css" />
+  <link rel="stylesheet" href="css/screens/criarOrcamentoAdmin.css" />
+  <link rel="stylesheet" href="css/screens/profissionais.css" />
+  <link rel="stylesheet" href="css/screens/ajuda.css" />
+  <link rel="stylesheet" href="css/screens/relatorio.css" />
+  <link rel="stylesheet" href="css/screens/falarCliente.css" />
+  <link rel="stylesheet" href="css/screens/historicoCliente.css" />
+</head>
+<body>
+<div id="app">
+
+  <!-- ══════════════════════════════════════════
+       TELAS — cada <div class="screen"> é uma tela
+       A tela ativa recebe a classe .active
+  ══════════════════════════════════════════ -->
+
+  <div id="tela-splash"              class="screen"></div>
+  <div id="tela-inicial"             class="screen"></div>
+  <div id="tela-loginCliente"        class="screen"></div>
+  <div id="tela-loginAdmin"          class="screen"></div>
+  <div id="tela-cadastro"            class="screen"></div>
+  <div id="tela-recuperarSenha"      class="screen"></div>
+  <div id="tela-principal"           class="screen"></div>
+  <div id="tela-abrirChamado"        class="screen"></div>
+  <div id="tela-acompanharChamado"   class="screen"></div>
+  <div id="tela-detalheChamadoCliente" class="screen"></div>
+  <div id="tela-painelAdmin"         class="screen"></div>
+  <div id="tela-chamadoDetalhes"     class="screen"></div>
+  <div id="tela-agendaAdmin"         class="screen"></div>
+  <div id="tela-perfil"              class="screen"></div>
+  <div id="tela-abrirProgramado"     class="screen"></div>
+  <div id="tela-programadoCliente"   class="screen"></div>
+  <div id="tela-editarProgramado"    class="screen"></div>
+  <div id="tela-orcamento"           class="screen"></div>
+  <div id="tela-meusOrcamentos"      class="screen"></div>
+  <div id="tela-aprovarOrcamento"    class="screen"></div>
+  <div id="tela-orcamentoAdmin"      class="screen"></div>
+  <div id="tela-criarOrcamentoAdmin" class="screen"></div>
+  <div id="tela-profissionais"       class="screen"></div>
+  <div id="tela-ajuda"               class="screen"></div>
+  <div id="tela-relatorio"           class="screen"></div>
+  <div id="tela-falarCliente"        class="screen"></div>
+  <div id="tela-historicoCliente"    class="screen"></div>
+
+</div><!-- #app -->
+
+<!-- ══════════════════════════════════════════
+     Firebase SDK (compat v10) via CDN
+══════════════════════════════════════════ -->
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.0/firebase-messaging-compat.js"></script>
+
+<!-- Serviços base (ordem importa) -->
+<script src="js/services/firebase.js"></script>
+<script src="js/services/notificacoes.js"></script>
+<script src="js/services/whatsapp.js"></script>
+<script src="js/services/agenda.js"></script>
+
+<!-- Core do app -->
+<script src="js/state.js"></script>
+<script src="js/router.js"></script>
+
+<!-- Telas (ordem importa — dependem de router.js) -->
+<script src="js/screens/splash.js"></script>
+<script src="js/screens/inicial.js"></script>
+<script src="js/screens/loginCliente.js"></script>
+<script src="js/screens/loginAdmin.js"></script>
+<script src="js/screens/cadastro.js"></script>
+<script src="js/screens/recuperarSenha.js"></script>
+<script src="js/screens/principal.js"></script>
+<script src="js/screens/abrirChamado.js"></script>
+<script src="js/screens/acompanharChamado.js"></script>
+<script src="js/screens/detalheChamadoCliente.js"></script>
+<script src="js/screens/painelAdmin.js"></script>
+<script src="js/screens/chamadoDetalhes.js"></script>
+<script src="js/screens/agendaAdmin.js"></script>
+<script src="js/screens/perfil.js"></script>
+<script src="js/screens/abrirProgramado.js"></script>
+<script src="js/screens/programadoCliente.js"></script>
+<script src="js/screens/editarProgramado.js"></script>
+<script src="js/screens/orcamento.js"></script>
+<script src="js/screens/meusOrcamentos.js"></script>
+<script src="js/screens/aprovarOrcamento.js"></script>
+<script src="js/screens/orcamentoAdmin.js"></script>
+<script src="js/screens/criarOrcamentoAdmin.js"></script>
+<script src="js/screens/profissionais.js"></script>
+<script src="js/screens/ajuda.js"></script>
+<script src="js/screens/relatorio.js"></script>
+<script src="js/screens/falarCliente.js"></script>
+<script src="js/screens/historicoCliente.js"></script>
+
+<!-- Inicializador (último) -->
+<script src="js/app.js"></script>
+
+</body>
+</html>

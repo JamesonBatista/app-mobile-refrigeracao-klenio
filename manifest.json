@@ -1,0 +1,14 @@
+{
+  "name": "Klenio Refrigeração",
+  "short_name": "Klenio",
+  "description": "Gestão de chamados de refrigeração",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#060e1f",
+  "theme_color": "#060e1f",
+  "orientation": "portrait",
+  "icons": [
+    { "src": "/assets/images/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/images/icon-512.png", "sizes": "512x512", "type": "image/png" }
+  ]
+}

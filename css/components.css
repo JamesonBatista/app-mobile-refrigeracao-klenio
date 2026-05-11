@@ -1,0 +1,390 @@
+/* css/components.css */
+/* ============================================================
+   components.css — componentes globais reutilizáveis
+   Equivale a: globalStyles do global.js
+   ============================================================ */
+
+/* ── App container ─────────────────────────────────────────── */
+#app {
+  width: 100%;
+  height: 100dvh;
+  background-color: var(--bg);
+  overflow: hidden;
+  position: relative;
+}
+
+/* ── Tela (cada screen é um .screen) ───────────────────────── */
+.screen {
+  display: none;
+  flex-direction: column;
+  height: 100dvh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  background-color: var(--bg);
+  position: absolute;
+  inset: 0;
+  -webkit-overflow-scrolling: touch;
+}
+.screen.active { display: flex; }
+
+/* ── Scroll container dentro da tela ───────────────────────── */
+.scroll {
+  flex: 1;
+  padding: 0 20px 40px;
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* ── Flocos de neve (fundo animado) ────────────────────────── */
+.flocos-fundo {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.floco {
+  position: absolute;
+  color: rgba(180,220,255,0.7);
+  font-size: 14px;
+  animation: flocoQueda linear infinite;
+  opacity: 0;
+}
+@keyframes flocoQueda {
+  0%   { transform: translateY(-30px); opacity: 0; }
+  10%  { opacity: 0.6; }
+  90%  { opacity: 0.3; }
+  100% { transform: translateY(110vh); opacity: 0; }
+}
+
+/* ── Logo ───────────────────────────────────────────────────── */
+.logo-wrap {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 40px;
+  margin-bottom: 24px;
+  position: relative;
+  z-index: 1;
+}
+.logo-circulo {
+  width: 64px; height: 64px;
+  border-radius: 50%;
+  background: rgba(56,182,255,0.2);
+  border: 1.5px solid rgba(56,182,255,0.5);
+  display: flex; align-items: center; justify-content: center;
+  margin-bottom: 10px;
+  font-size: 28px;
+}
+.logo-nome {
+  font-size: 20px; font-weight: 700;
+  color: var(--primary); letter-spacing: 1px;
+}
+.logo-sub {
+  font-size: 10px; color: var(--text-muted);
+  letter-spacing: 2px; margin-top: 2px;
+}
+
+/* ── Card ───────────────────────────────────────────────────── */
+.card {
+  background: var(--card-bg);
+  border-radius: var(--radius-xl);
+  border: 1px solid var(--card-border);
+  padding: 24px;
+  position: relative;
+  z-index: 1;
+}
+.card + .card { margin-top: 14px; }
+
+.titulo  { font-size: 20px; font-weight: 700; color: #fff; margin-bottom: 4px; }
+.subtitulo { font-size: 13px; color: var(--text-muted); margin-bottom: 16px; }
+
+/* ── Formulário ─────────────────────────────────────────────── */
+.label {
+  font-size: 11px;
+  color: rgba(180,220,255,0.55);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+  display: block;
+  margin-bottom: 6px;
+  margin-top: 12px;
+}
+
+.input-wrap {
+  display: flex;
+  align-items: center;
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  padding: 0 12px;
+  margin-bottom: 4px;
+}
+.input-wrap:focus-within {
+  border-color: rgba(56,182,255,0.4);
+}
+.input-icone {
+  font-size: 16px;
+  margin-right: 8px;
+  flex-shrink: 0;
+}
+.input-wrap input,
+.input-wrap textarea {
+  flex: 1;
+  padding: 12px 0;
+  font-size: 14px;
+  color: #fff;
+  background: transparent;
+}
+.input-wrap input::placeholder,
+.input-wrap textarea::placeholder {
+  color: var(--text-placeholder);
+}
+textarea.input-area {
+  background: var(--input-bg);
+  border: 1px solid var(--input-border);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  color: #fff;
+  font-size: 14px;
+  min-height: 120px;
+  resize: none;
+  width: 100%;
+  display: block;
+}
+textarea.input-area::placeholder { color: var(--text-placeholder); }
+
+/* ── Botões ─────────────────────────────────────────────────── */
+.btn-primary {
+  display: flex; align-items: center; justify-content: center;
+  width: 100%; margin-top: 24px;
+  border-radius: var(--radius-md);
+  background: #1a6fa8;
+  padding: 14px;
+  font-size: 15px; font-weight: 700;
+  color: #fff; letter-spacing: 0.3px;
+  transition: opacity .15s;
+}
+.btn-primary:active { opacity: .8; }
+.btn-primary:disabled { opacity: .5; }
+
+.btn-green  { background: var(--green) !important; }
+.btn-admin  { background: var(--admin) !important; }
+.btn-red    { background: rgba(231,76,60,0.15) !important; color: var(--red) !important; border: 1px solid rgba(231,76,60,0.4) !important; }
+.btn-whatsapp { background: var(--whatsapp-dark) !important; }
+
+.btn-voltar {
+  display: flex; align-items: center;
+  gap: 6px;
+  background: rgba(255,255,255,0.06);
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.1);
+  padding: 8px 12px;
+  font-size: 14px; color: var(--primary);
+}
+
+.btn-link {
+  background: none;
+  color: var(--primary);
+  font-size: 13px;
+  text-align: center;
+  display: block;
+  padding: 8px;
+}
+
+.btn-text-center {
+  text-align: center;
+  margin-top: 16px;
+  padding: 12px;
+  color: var(--text-muted);
+  font-size: 14px;
+}
+.btn-text-center span { color: var(--primary); font-weight: 700; }
+
+/* ── Header da tela ─────────────────────────────────────────── */
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 20px;
+  margin-bottom: 20px;
+  position: relative;
+  z-index: 1;
+}
+.header-empresa {
+  font-size: 11px; color: rgba(180,220,255,0.5);
+  letter-spacing: 1px; text-transform: uppercase;
+  display: block; margin-bottom: 2px;
+}
+.header-nome {
+  font-size: 20px; font-weight: 700; color: var(--primary);
+}
+
+/* ── Erro box ───────────────────────────────────────────────── */
+.erro-box {
+  background: rgba(56,182,255,0.1);
+  border: 1px solid rgba(56,182,255,0.3);
+  border-radius: var(--radius-md);
+  padding: 12px;
+  margin-bottom: 14px;
+  text-align: center;
+  color: var(--primary);
+  font-size: 13px;
+}
+
+/* ── Loader spinner ─────────────────────────────────────────── */
+.spinner {
+  width: 24px; height: 24px;
+  border: 3px solid rgba(56,182,255,0.2);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation: spin .7s linear infinite;
+  margin: 0 auto;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ── Ponto piscante ─────────────────────────────────────────── */
+.ponto-piscante {
+  display: inline-block;
+  width: 10px; height: 10px;
+  border-radius: 50%;
+  background: var(--whatsapp);
+  animation: piscar 1.2s ease-in-out infinite;
+  margin-right: 4px;
+}
+@keyframes piscar { 0%,100%{ opacity:1; } 50%{ opacity:0; } }
+
+/* ── Badge de status ─────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: 4px;
+  border-radius: var(--radius-full);
+  padding: 3px 10px;
+  font-size: 11px; font-weight: 600;
+}
+
+/* ── Tag de tipo ────────────────────────────────────────────── */
+.tag {
+  display: inline-block;
+  background: rgba(56,182,255,0.1);
+  border: 1px solid rgba(56,182,255,0.2);
+  border-radius: var(--radius-sm);
+  padding: 3px 8px;
+  font-size: 11px;
+  color: var(--primary);
+  margin: 2px;
+}
+
+/* ── Calendário ─────────────────────────────────────────────── */
+.calendario-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0;
+  -webkit-overflow-scrolling: touch;
+}
+.dia-btn {
+  min-width: 70px;
+  display: flex; flex-direction: column; align-items: center;
+  padding: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer; flex-shrink: 0;
+  transition: all .15s;
+}
+.dia-btn.selecionado {
+  border-width: 2px;
+  border-color: var(--primary);
+  background: rgba(56,182,255,0.15);
+}
+.dia-btn.lotado  { opacity: .4; }
+.dia-btn.bloqueado-total { border-color: var(--red); background: rgba(231,76,60,0.1); }
+.dia-btn.bloqueado-parcial { border-color: var(--yellow); background: rgba(243,156,18,0.1); }
+.dia-semana { font-size: 10px; text-transform: uppercase; color: var(--text-muted); margin-bottom: 4px; }
+.dia-semana.sabado { color: var(--yellow); }
+.dia-numero { font-size: 20px; font-weight: 700; color: #fff; }
+.dia-numero.selecionado { color: var(--primary); }
+.dia-numero.lotado { color: rgba(255,255,255,0.3); }
+.dia-mes    { font-size: 10px; color: var(--text-muted); margin-top: 2px; }
+.dia-label  { font-size: 9px; margin-top: 4px; }
+
+/* ── Horário btn ────────────────────────────────────────────── */
+.horario-btn {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer; width: 100%;
+  margin-bottom: 10px;
+  transition: all .15s;
+}
+.horario-btn.selecionado {
+  border-width: 2px; border-color: var(--primary);
+  background: rgba(56,182,255,0.15);
+}
+.horario-btn.bloqueado {
+  border-color: rgba(231,76,60,0.4);
+  background: rgba(231,76,60,0.1);
+}
+
+/* ── Empty state ────────────────────────────────────────────── */
+.empty-state {
+  display: flex; flex-direction: column;
+  align-items: center; justify-content: center;
+  padding: 60px 20px;
+  text-align: center;
+}
+.empty-state .icone { font-size: 48px; margin-bottom: 16px; }
+.empty-state .titulo { font-size: 16px; font-weight: 700; color: #fff; }
+.empty-state .sub  { font-size: 13px; color: var(--text-muted); margin-top: 8px; }
+
+/* ── Aviso banner ───────────────────────────────────────────── */
+.aviso-box {
+  display: flex; align-items: center; gap: 10px;
+  border-radius: var(--radius-md);
+  border: 1px solid;
+  padding: 14px;
+  margin-bottom: 16px;
+  position: relative; z-index: 1;
+}
+.aviso-box.amarelo {
+  background: rgba(243,156,18,0.1);
+  border-color: rgba(243,156,18,0.3);
+  color: var(--yellow);
+}
+.aviso-box.azul {
+  background: rgba(56,182,255,0.08);
+  border-color: rgba(56,182,255,0.2);
+  color: var(--primary);
+}
+.aviso-box.verde {
+  background: rgba(37,211,102,0.08);
+  border-color: rgba(37,211,102,0.2);
+  color: var(--whatsapp);
+}
+.aviso-box p { font-size: 13px; flex: 1; }
+
+/* ── Botão de seleção múltipla (checkbox-like) ──────────────── */
+.opcao-btn {
+  display: flex; align-items: center;
+  gap: 12px; padding: 12px 14px;
+  border-radius: var(--radius-md);
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  cursor: pointer; width: 100%;
+  margin-bottom: 8px;
+  transition: all .15s;
+}
+.opcao-btn.selecionado {
+  border-color: rgba(56,182,255,0.5);
+  background: rgba(56,182,255,0.12);
+}
+.opcao-check {
+  width: 20px; height: 20px; border-radius: 50%;
+  border: 1.5px solid rgba(255,255,255,0.2);
+  display: flex; align-items: center; justify-content: center;
+  flex-shrink: 0; font-size: 11px;
+}
+.opcao-btn.selecionado .opcao-check {
+  background: var(--primary); border-color: var(--primary); color: #fff;
+}
