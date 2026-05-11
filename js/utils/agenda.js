@@ -29,6 +29,22 @@
     Cancelado: 4,
   };
 
+  const WHATSAPP_ICON_MAP = {
+    "👋": "📋",
+    "❄": "🔧",
+    "🔢": "📋",
+    "💬": "📝",
+    "📨": "📝",
+    "📲": "📱",
+    "⏳": "⚠",
+    "🚫": "❌",
+    "🏁": "✅",
+    "🔍": "📋",
+    "📡": "📋",
+    "🌡": "📋",
+    "⚡": "⚠",
+  };
+
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
     try {
@@ -1061,6 +1077,10 @@
       // Remove only emoji modifiers that commonly break legacy clients.
       .replace(/\uFE0F/g, "")
       .replace(/\u200D/g, "")
+      // Padroniza ícones para um conjunto seguro em Android/iOS.
+      .replace(/[👋❄🔢💬📨📲⏳🚫🏁🔍📡🌡⚡]/g, function (icone) {
+        return WHATSAPP_ICON_MAP[icone] || icone;
+      })
       .replace(/[ \t]{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
