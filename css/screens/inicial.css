@@ -5,25 +5,206 @@
   overflow: hidden;
 }
 
-.tela-inicial-bg {
-  flex: 1;
+.inicial-content {
+  position: relative;
+  z-index: 1;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  position: relative;
+  align-items: center;
+  padding: calc(env(safe-area-inset-top, 0px) + 18px) 14px calc(env(safe-area-inset-bottom, 0px) + 22px);
+}
+
+.temp-display {
+  min-width: 180px;
+  border: 1px solid rgba(56, 182, 255, 0.35);
+  border-radius: 14px;
+  background: rgba(56, 182, 255, 0.1);
+  padding: 8px 14px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  transition: all 0.2s ease;
+}
+
+.temp-valor {
+  font-size: 24px;
+  font-weight: 700;
+  color: #27ae60;
+  letter-spacing: 0.4px;
+  line-height: 1;
+}
+
+.temp-desc {
+  font-size: 12px;
+  color: #27ae60;
+  font-weight: 600;
+}
+
+.temp-barra-wrap {
+  width: 100%;
+  max-width: 360px;
+  margin-top: 10px;
+}
+
+.temp-barra-bg {
+  width: 100%;
+  height: 7px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.12);
   overflow: hidden;
 }
 
-.temp-btn {
-  width: 46px; height: 46px;
-  border-radius: 50%;
-  display: flex; align-items: center; justify-content: center;
-  cursor: pointer;
-  transition: opacity .15s;
+.temp-barra-fill {
+  width: 0;
+  height: 100%;
+  background: #27ae60;
+  border-radius: inherit;
+  transition: width 0.2s ease, background 0.2s ease;
 }
-.temp-btn:disabled { opacity: .3; }
 
-@keyframes logoGlowPulse {
-  0%, 100% { opacity: .2; transform: scale(1); }
-  50%       { opacity: .6; transform: scale(1.05); }
+.temp-barra-labels {
+  margin-top: 6px;
+  display: flex;
+  justify-content: space-between;
+  font-size: 22px;
+  font-weight: 700;
+  line-height: 1;
+}
+
+.inicial-logo-row {
+  margin-top: 14px;
+  display: flex;
+  align-items: center;
+  gap: 24px;
+}
+
+.temp-btn {
+  width: 46px;
+  height: 46px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  font-size: 28px;
+  font-weight: 300;
+  color: #7ec8ff;
+  border: 1px solid rgba(56, 182, 255, 0.45);
+  background: rgba(56, 182, 255, 0.08);
+  transition: opacity 0.15s, transform 0.15s;
+}
+
+.temp-btn:active {
+  transform: scale(0.96);
+}
+
+.temp-btn:disabled {
+  opacity: 0.3;
+}
+
+.inicial-logo {
+  width: 84px;
+  height: 84px;
+  border-radius: 50%;
+  border: 1.5px solid rgba(56, 182, 255, 0.55);
+  background: radial-gradient(circle at 30% 30%, rgba(86, 196, 255, 0.28), rgba(56, 182, 255, 0.12));
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 0 24px rgba(56, 182, 255, 0.35);
+  transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+.inicial-logo:active {
+  transform: scale(0.97);
+}
+
+.inicial-logo-icone {
+  font-size: 44px;
+  line-height: 1;
+  color: #38b6ff;
+  filter: drop-shadow(0 0 6px rgba(56, 182, 255, 0.6));
+}
+
+.inicial-titulo {
+  margin-top: 14px;
+  color: #fff;
+  font-size: 32px;
+  font-weight: 700;
+  letter-spacing: 0.2px;
+  text-align: center;
+}
+
+.inicial-linha {
+  margin-top: 10px;
+  width: 230px;
+  height: 1px;
+  background: rgba(56, 182, 255, 0.35);
+}
+
+.inicial-sub {
+  margin-top: 10px;
+  color: rgba(56, 182, 255, 0.75);
+  font-size: 22px;
+  font-weight: 600;
+  letter-spacing: 2px;
+  text-align: center;
+}
+
+.inicial-botoes {
+  width: 100%;
+  max-width: 370px;
+  margin-top: auto;
+  padding-bottom: 8px;
+}
+
+.inicial-botoes .btn-primary {
+  margin-top: 0;
+}
+
+.inicial-botoes .btn-primary + .btn-primary {
+  margin-top: 14px;
+}
+
+.inicial-botoes .btn-link {
+  margin-top: 2px;
+}
+
+.btn-outline-blue {
+  background: rgba(56, 182, 255, 0.15) !important;
+  border: 1px solid rgba(56, 182, 255, 0.45) !important;
+}
+
+.logo-pulse {
+  animation: logoPulse 0.38s ease;
+}
+
+.temp-pulse {
+  animation: tempPulse 0.2s ease;
+}
+
+@keyframes logoPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.08);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes tempPulse {
+  0% {
+    transform: scale(1);
+  }
+  50% {
+    transform: scale(1.04);
+  }
+  100% {
+    transform: scale(1);
+  }
 }
