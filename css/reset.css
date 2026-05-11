@@ -1,53 +1,21 @@
 /* css/reset.css */
-/* ============================================================
-   reset.css — reset mobile-first
-   ============================================================ */
 
-*, *::before, *::after {
+*,
+*::before,
+*::after {
   box-sizing: border-box;
   margin: 0;
   padding: 0;
-  -webkit-tap-highlight-color: transparent;
 }
 
-html, body {
-  height: 100%;
-  overflow: hidden; /* SPA — scroll fica dentro de cada tela */
+html,
+body {
+  width: 100%;
+  min-height: 100%;
 }
 
 body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background-color: var(--bg-dark);
-  color: var(--text-white);
-  /* Trava orientação portrait via CSS (reforço ao JS) */
-  max-width: 480px;
-  margin: 0 auto;
-  position: relative;
-}
-
-input, textarea, button, select {
-  font-family: inherit;
-  outline: none;
-  border: none;
-  background: none;
-  color: inherit;
-}
-
-button { cursor: pointer; }
-
-a { text-decoration: none; color: inherit; }
-
-img { display: block; max-width: 100%; }
-
-/* Scrollbar invisível mas funcional */
-::-webkit-scrollbar { width: 0; height: 0; }
-
-/* Evita zoom em inputs no iOS */
-input[type="text"],
-input[type="email"],
-input[type="password"],
-input[type="tel"],
-input[type="number"],
-textarea {
-  font-size: 16px;
+  font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: var(--bg);
+  color: var(--text);
 }

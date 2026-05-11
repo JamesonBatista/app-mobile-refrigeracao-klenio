@@ -1,69 +1,35 @@
 // js/state.js
-// ============================================================
-// state.js — estado global reativo
-// Substitui: useState/useRef do App.js + AsyncStorage
-// ============================================================
 
 const State = (() => {
-  const _state = {
-    tela: 'splash',
-    usuarioLogado: null,
-    chamadoSelecionado: null,
-    chamadoClienteSelecionado: null,
-    programadoSelecionado: null,
-    orcamentoParaAprovar: null,
-  };
-
-  const _listeners = {};
+  const store = {};
+  const listeners = {};
 
   function get(key) {
-    return _state[key];
+    return store[key];
   }
 
   function set(key, value) {
-    _state[key] = value;
-    if (_listeners[key]) {
-      _listeners[key].forEach(fn => fn(value));
-    }
+    store[key] = value;
+    if (!listeners[key]) return;
+    listeners[key].forEach((listener) => listener(value));
   }
 
-  function on(key, fn) {
-    if (!_listeners[key]) _listeners[key] = [];
-    _listeners[key].push(fn);
+  function subscribe(key, listener) {
+    if (!listeners[key]) listeners[key] = [];
+    listeners[key].push(listener);
+    return () => {
+      listeners[key] = listeners[key].filter((item) => item !== listener);
+    };
   }
 
-  // ── Persistência (substitui AsyncStorage) ────────────────
-  function salvarUsuario(usuario) {
-    try {
-      localStorage.setItem('@usuarioLogado', JSON.stringify(usuario));
-    } catch (e) { console.log('Erro salvarUsuario:', e); }
+  function reset() {
+    Object.keys(store).forEach((key) => {
+      delete store[key];
+    });
+    Object.keys(listeners).forEach((key) => {
+      listeners[key] = [];
+    });
   }
 
-  function carregarUsuario() {
-    try {
-      const raw = localStorage.getItem('@usuarioLogado');
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
-
-  function removerUsuario() {
-    try {
-      localStorage.removeItem('@usuarioLogado');
-    } catch (e) { console.log('Erro removerUsuario:', e); }
-  }
-
-  function salvarDadosUsuario(key, dados) {
-    try {
-      localStorage.setItem(key, JSON.stringify(dados));
-    } catch (e) { console.log('Erro salvarDadosUsuario:', e); }
-  }
-
-  function carregarDadosUsuario(key) {
-    try {
-      const raw = localStorage.getItem(key);
-      return raw ? JSON.parse(raw) : null;
-    } catch (e) { return null; }
-  }
-
-  return { get, set, on, salvarUsuario, carregarUsuario, removerUsuario, salvarDadosUsuario, carregarDadosUsuario };
+  return { get, set, subscribe, reset };
 })();

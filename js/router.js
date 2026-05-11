@@ -1,65 +1,28 @@
 // js/router.js
-// ============================================================
-// router.js — roteador de telas SPA
-// Substitui: switch(tela) do App.js
-// ============================================================
 
 const Router = (() => {
+  const screens = new Map();
 
-  // Mapa de tela → id do elemento HTML
-  const TELAS = [
-    'splash', 'inicial', 'loginCliente', 'loginAdmin', 'cadastro',
-    'recuperarSenha', 'principal', 'abrirChamado', 'acompanharChamado',
-    'detalheChamadoCliente', 'painelAdmin', 'chamadoDetalhes',
-    'agendaAdmin', 'perfil', 'abrirProgramado', 'programadoCliente',
-    'editarProgramado', 'orcamento', 'meusOrcamentos', 'aprovarOrcamento',
-    'orcamentoAdmin', 'criarOrcamentoAdmin', 'profissionais', 'ajuda',
-    'relatorio', 'falarCliente', 'historicoCliente',
-  ];
-
-  // Callbacks chamados quando uma tela é ativada (onMount)
-  const _onMount = {};
-
-  function registrarMount(tela, fn) {
-    _onMount[tela] = fn;
+  function register(screenName, renderer) {
+    screens.set(screenName, renderer);
   }
 
-  function navegar(nomeTela) {
-    if (nomeTela === 'sair') {
-      handleSair();
+  function go(screenName, payload = null) {
+    const renderer = screens.get(screenName);
+    if (!renderer) {
+      console.warn(`Tela "${screenName}" nao registrada.`);
       return;
     }
 
-    // Esconde todas
-    TELAS.forEach(t => {
-      const el = document.getElementById(`tela-${t}`);
-      if (el) el.classList.remove('active');
-    });
+    const app = document.getElementById("app");
+    app.innerHTML = `<section class="screen" data-screen="${screenName}"></section>`;
 
-    // Mostra a correta
-    const alvo = document.getElementById(`tela-${nomeTela}`);
-    if (alvo) {
-      alvo.classList.add('active');
-      alvo.scrollTop = 0;
-    }
-
-    State.set('tela', nomeTela);
-
-    // Executa callback de mount se existir
-    if (_onMount[nomeTela]) {
-      _onMount[nomeTela]();
-    }
+    const screenElement = app.querySelector(`[data-screen="${screenName}"]`);
+    renderer(screenElement, payload);
+    State.set("currentScreen", screenName);
   }
 
-  async function handleSair() {
-    State.removerUsuario();
-    State.set('usuarioLogado', null);
-    navegar('inicial');
-  }
+  window.setTela = go;
 
-  // Expõe setTela como função global para uso nas telas
-  // chamada como: setTela('principal')
-  window.setTela = navegar;
-
-  return { navegar, registrarMount, handleSair };
+  return { register, go };
 })();

@@ -1,56 +1,21 @@
 // js/app.js
-// ============================================================
-// app.js — inicializador principal
-// Substitui: App.js do React Native
-// Depende de: state.js, router.js e todos os screens/*.js
-// ============================================================
 
-// ── Trava orientação portrait ────────────────────────────────
-if (screen.orientation && screen.orientation.lock) {
-  screen.orientation.lock('portrait').catch(() => {});
-}
+document.addEventListener("DOMContentLoaded", () => {
+  Router.register("home", (root) => {
+    root.innerHTML = `
+      <article class="boot-card">
+        <h1 class="boot-title">Projeto limpo com sucesso</h1>
+        <p class="boot-subtitle">
+          Base reiniciada. Envie as novas telas e eu construo uma por uma.
+        </p>
+        <ul class="boot-list">
+          <li>Estrutura SPA simplificada</li>
+          <li>Estado global reiniciado</li>
+          <li>Roteador pronto para registrar novas telas</li>
+        </ul>
+      </article>
+    `;
+  });
 
-// ── Lógica de inicialização (substitui iniciarApp do App.js) ─
-async function iniciarApp() {
-  try {
-    const usuario = State.carregarUsuario();
-    if (usuario) {
-      State.set('usuarioLogado', usuario);
-      if (usuario.perfil === 'admin') {
-        await configurarNotificacoesAdmin();
-        Router.navegar('painelAdmin');
-      } else {
-        await configurarNotificacoesCliente(usuario.email);
-        Router.navegar('principal');
-      }
-    } else {
-      Router.navegar('inicial');
-    }
-  } catch (e) {
-    console.log('Erro iniciarApp:', e);
-    Router.navegar('inicial');
-  }
-}
-
-// ── Notificações cliente ─────────────────────────────────────
-async function configurarNotificacoesCliente(email) {
-  try { await registrarToken(email); }
-  catch (e) { console.log('Erro configurarNotificacoesCliente:', e); }
-}
-
-// ── Notificações admin ───────────────────────────────────────
-async function configurarNotificacoesAdmin() {
-  try {
-    const token = await registrarToken(null);
-    if (token) await salvarTokenAdmin(token);
-  } catch (e) { console.log('Erro configurarNotificacoesAdmin:', e); }
-}
-
-// ── Inicializa o app quando o DOM estiver pronto ─────────────
-document.addEventListener('DOMContentLoaded', () => {
-  // FCM foreground
-  configurarMensagemForeground();
-
-  // Inicia na tela splash
-  Router.navegar('splash');
+  Router.go("home");
 });
