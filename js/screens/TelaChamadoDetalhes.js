@@ -108,6 +108,29 @@
     return null;
   }
 
+  function normalizarFotoUri(foto) {
+    if (!foto) return "";
+    let valor = foto;
+    if (typeof foto === "object") {
+      valor = foto.uri || foto.url || foto.src || "";
+    }
+    if (typeof valor !== "string") return "";
+    const uri = valor.trim();
+    if (!uri) return "";
+    if (
+      uri.startsWith("data:image/") ||
+      uri.startsWith("blob:") ||
+      uri.startsWith("http://") ||
+      uri.startsWith("https://")
+    ) {
+      return uri;
+    }
+    if (/^[A-Za-z0-9+/=]+$/.test(uri) && uri.length > 120) {
+      return `data:image/jpeg;base64,${uri}`;
+    }
+    return "";
+  }
+
   function calcularTempoAtendimento(chamado) {
     const historico = Array.isArray(chamado.historicoStatus) ? chamado.historicoStatus : [];
     const inicioIso =
@@ -202,6 +225,11 @@
       unsubChamado: null,
       unsubProf: null,
     };
+
+    function fotosNormalizadas() {
+      if (!Array.isArray(state.chamado?.fotos)) return [];
+      return state.chamado.fotos.map(normalizarFotoUri).filter(Boolean);
+    }
 
     function statusInfo() {
       return STATUS_CONFIG[state.chamado?.status] || STATUS_CONFIG["Aguardando técnico"];
@@ -528,21 +556,22 @@
     }
 
     function renderFotos() {
-      if (!Array.isArray(state.chamado.fotos) || state.chamado.fotos.length === 0) return "";
+      const fotos = fotosNormalizadas();
+      if (fotos.length === 0) return "";
       return `
         <div>
           <div class="ad-fotos-head">
             <span>📷</span>
-            <span>Fotos do cliente (${state.chamado.fotos.length})</span>
+            <span>Fotos do cliente (${fotos.length})</span>
           </div>
           <div class="ad-fotos-row">
-            ${state.chamado.fotos
+            ${fotos
               .map(
                 (uri, index) => `
                   <button class="ad-foto-btn" data-action="expandir-foto" data-index="${index}" type="button">
                     <img src="${uri}" alt="Foto ${index + 1}" />
                     <span class="ad-foto-zoom">🔍 Ver</span>
-                    <span class="ad-foto-order">${index + 1}/${state.chamado.fotos.length}</span>
+                    <span class="ad-foto-order">${index + 1}/${fotos.length}</span>
                   </button>
                 `
               )
@@ -554,14 +583,15 @@
 
     function renderModalFoto() {
       if (!state.fotoExpandida) return "";
+      const fotos = fotosNormalizadas();
       return `
         <div class="ch-modal" id="ad-modal-foto">
           <img class="ch-modal-img" src="${state.fotoExpandida}" alt="Foto ampliada" />
           ${
-            state.chamado.fotos && state.chamado.fotos.length > 1
+            fotos.length > 1
               ? `
                 <div class="ch-modal-thumbs">
-                  ${state.chamado.fotos
+                  ${fotos
                     .map(
                       (uri, index) => `
                         <img
@@ -1039,13 +1069,15 @@
         }
         if (action === "expandir-foto") {
           const idx = Number(actionEl.dataset.index);
-          state.fotoExpandida = state.chamado.fotos[idx] || null;
+          const fotos = fotosNormalizadas();
+          state.fotoExpandida = fotos[idx] || null;
           render();
           return;
         }
         if (action === "foto-thumb") {
           const idx = Number(actionEl.dataset.index);
-          state.fotoExpandida = state.chamado.fotos[idx] || null;
+          const fotos = fotosNormalizadas();
+          state.fotoExpandida = fotos[idx] || null;
           render();
         }
       });
@@ -1070,7 +1102,8 @@
           const thumb = event.target.closest("[data-action='foto-thumb']");
           if (thumb) {
             const idx = Number(thumb.dataset.index);
-            state.fotoExpandida = state.chamado.fotos[idx] || state.fotoExpandida;
+            const fotos = fotosNormalizadas();
+            state.fotoExpandida = fotos[idx] || state.fotoExpandida;
             render();
             return;
           }

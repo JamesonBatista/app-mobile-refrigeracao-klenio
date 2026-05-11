@@ -33,6 +33,29 @@
       .replaceAll("'", "&#39;");
   }
 
+  function normalizarFotoUri(foto) {
+    if (!foto) return "";
+    let valor = foto;
+    if (typeof foto === "object") {
+      valor = foto.uri || foto.url || foto.src || "";
+    }
+    if (typeof valor !== "string") return "";
+    const uri = valor.trim();
+    if (!uri) return "";
+    if (
+      uri.startsWith("data:image/") ||
+      uri.startsWith("blob:") ||
+      uri.startsWith("http://") ||
+      uri.startsWith("https://")
+    ) {
+      return uri;
+    }
+    if (/^[A-Za-z0-9+/=]+$/.test(uri) && uri.length > 120) {
+      return `data:image/jpeg;base64,${uri}`;
+    }
+    return "";
+  }
+
   function getChamadosLocais(email) {
     try {
       const raw = localStorage.getItem("@chamados");
@@ -77,7 +100,8 @@
     function renderCard(chamado, index) {
       const deOrcamento = !!chamado.geradoDeOrcamento;
       const abertoPeloSuporte = chamado.criadoPorAdmin === true;
-      const temFotos = Array.isArray(chamado.fotos) && chamado.fotos.length > 0;
+      const fotos = Array.isArray(chamado.fotos) ? chamado.fotos.map(normalizarFotoUri).filter(Boolean) : [];
+      const temFotos = fotos.length > 0;
 
       return `
         <article class="ac-call-card${deOrcamento ? " is-from-orc" : ""}${abertoPeloSuporte ? " is-from-admin" : ""}">
@@ -130,9 +154,9 @@
 
             ${temFotos ? `
               <div class="ac-fotos-wrap">
-                <p class="ac-fotos-label">📷 ${chamado.fotos.length} foto${chamado.fotos.length > 1 ? "s" : ""} enviada${chamado.fotos.length > 1 ? "s" : ""}</p>
+                <p class="ac-fotos-label">📷 ${fotos.length} foto${fotos.length > 1 ? "s" : ""} enviada${fotos.length > 1 ? "s" : ""}</p>
                 <div class="ac-fotos-row">
-                  ${chamado.fotos.map((uri, fotoIndex) => `
+                  ${fotos.map((uri, fotoIndex) => `
                     <button
                       class="ac-foto-item"
                       type="button"
@@ -230,8 +254,9 @@
         if (action === "expandir-foto") {
           const chamado = listaFiltrada[Number(target.dataset.call)];
           if (!chamado || !Array.isArray(chamado.fotos)) return;
-          const uri = chamado.fotos[Number(target.dataset.foto)];
-          state.fotosModal = chamado.fotos;
+          const fotos = chamado.fotos.map(normalizarFotoUri).filter(Boolean);
+          const uri = fotos[Number(target.dataset.foto)];
+          state.fotosModal = fotos;
           state.fotoExpandida = uri;
           render();
           return;

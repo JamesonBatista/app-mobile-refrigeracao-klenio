@@ -233,6 +233,58 @@
       });
     }
 
+    function parseDataHoraTexto(dataTexto, horaTexto) {
+      if (!dataTexto) return 0;
+      const partes = String(dataTexto).split("/");
+      if (partes.length !== 3) return 0;
+      const dia = Number(partes[0]);
+      const mes = Number(partes[1]) - 1;
+      const ano = Number(partes[2]);
+      let hora = 0;
+      let minuto = 0;
+      if (horaTexto) {
+        const hm = String(horaTexto).split(":");
+        if (hm.length >= 2) {
+          hora = Number(hm[0]) || 0;
+          minuto = Number(hm[1]) || 0;
+        }
+      }
+      const dt = new Date(ano, mes, dia, hora, minuto, 0, 0);
+      return dt.getTime() || 0;
+    }
+
+    function getChamadoTimestamp(item) {
+      if (!item) return 0;
+      if (item.timestamp_Concluído) {
+        const ts = new Date(item.timestamp_Concluído).getTime();
+        if (!Number.isNaN(ts)) return ts;
+      }
+      if (item.timestamp_Cancelado) {
+        const ts = new Date(item.timestamp_Cancelado).getTime();
+        if (!Number.isNaN(ts)) return ts;
+      }
+      if (item.dataConclusao) {
+        const ts = parseDataHoraTexto(item.dataConclusao, item.horaConclusao);
+        if (ts) return ts;
+      }
+      const historico = Array.isArray(item.historicoStatus) ? item.historicoStatus : [];
+      if (historico.length > 0) {
+        const ultimo = historico[historico.length - 1];
+        if (ultimo && ultimo.iso) {
+          const ts = new Date(ultimo.iso).getTime();
+          if (!Number.isNaN(ts)) return ts;
+        }
+        const tsHistorico = parseDataHoraTexto(ultimo && ultimo.data, ultimo && ultimo.hora);
+        if (tsHistorico) return tsHistorico;
+      }
+      if (item.dataCriacao && String(item.dataCriacao).includes(" às ")) {
+        const [dataBr, horaTxt] = String(item.dataCriacao).split(" às ");
+        const ts = parseDataHoraTexto(dataBr, horaTxt);
+        if (ts) return ts;
+      }
+      return parseDataHoraTexto(item.dataAbertura, item.horaAbertura);
+    }
+
     function processarChamados(lista) {
       const visiveis = (lista || []).filter((item) => !item.excluidoPorAdmin);
       state.chamadosPendentes = ordenarPorUrgencia(
@@ -243,7 +295,7 @@
       );
       state.chamadosConcluidos = visiveis.filter(
         (item) => item.status === "Concluído" || item.status === "Cancelado"
-      );
+      ).sort((a, b) => getChamadoTimestamp(b) - getChamadoTimestamp(a));
       state.carregando = false;
       render();
     }
