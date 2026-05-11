@@ -127,6 +127,30 @@
     setArrayStorage(chave, lista);
   }
 
+  function getChamadoMergeKey(item, indexFallback) {
+    if (!item) return `idx:${indexFallback}`;
+    if (item.numero) return `numero:${item.numero}`;
+    if (item.id) return `id:${item.id}`;
+    return `idx:${indexFallback}`;
+  }
+
+  function mergeChamadosRemotosComLocais(chamadosRemotos) {
+    const locais = parseArrayStorage(STORAGE_KEYS.chamados);
+    const mapa = new Map();
+
+    locais.forEach(function (item, index) {
+      mapa.set(getChamadoMergeKey(item, index), item);
+    });
+
+    (Array.isArray(chamadosRemotos) ? chamadosRemotos : []).forEach(function (item, index) {
+      const key = getChamadoMergeKey(item, index);
+      const atual = mapa.get(key) || {};
+      mapa.set(key, { ...atual, ...item });
+    });
+
+    return Array.from(mapa.values());
+  }
+
   function isDomingo(data) {
     return data.getDay() === 0;
   }
@@ -202,9 +226,10 @@
     if (!collection) return parseArrayStorage(STORAGE_KEYS.chamados);
     try {
       const snapshot = await collection.get();
-      const lista = snapshot.docs.map(function (doc) {
+      const listaRemota = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
+      const lista = mergeChamadosRemotosComLocais(listaRemota);
       setArrayStorage(STORAGE_KEYS.chamados, lista);
       return lista;
     } catch (error) {
@@ -326,9 +351,10 @@
     const collection = getDbCollection("chamados");
     if (collection && typeof collection.onSnapshot === "function") {
       return collection.onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
+        const listaRemota = snapshot.docs.map(function (doc) {
           return { id: doc.id, ...doc.data() };
         });
+        const lista = mergeChamadosRemotosComLocais(listaRemota);
         setArrayStorage(STORAGE_KEYS.chamados, lista);
         callback(lista);
       });
