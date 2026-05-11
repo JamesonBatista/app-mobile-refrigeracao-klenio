@@ -30,20 +30,40 @@
   };
 
   const WHATSAPP_ICON_MAP = {
-    "👋": "📋",
-    "❄": "🔧",
-    "🔢": "📋",
-    "💬": "📝",
-    "📨": "📝",
-    "📲": "📱",
-    "⏳": "⚠",
-    "🚫": "❌",
-    "🏁": "✅",
-    "🔍": "📋",
-    "📡": "📋",
-    "🌡": "📋",
-    "⚡": "⚠",
+    "👋": "▣",
+    "❄": "⚙",
+    "🔢": "#",
+    "💬": "✉",
+    "📨": "✉",
+    "📲": "☎",
+    "📱": "☎",
+    "⏳": "⌛",
+    "🚫": "✖",
+    "🏁": "✓",
+    "🔍": "◉",
+    "📡": "◉",
+    "🌡": "◉",
+    "⚡": "!",
+    "💰": "$",
+    "💵": "$",
+    "💳": "$",
+    "🔧": "⚙",
+    "🛠": "⚙",
+    "👷": "⚙",
+    "📅": "◷",
+    "🕐": "◷",
+    "📍": "⌂",
+    "✅": "✓",
+    "❌": "✖",
+    "📋": "▣",
+    "📝": "✎",
+    "🚨": "!",
+    "🔗": "↪",
+    "👤": "◉",
+    "📊": "▦",
   };
+
+  const WHATSAPP_ICON_REGEX = /(👋|❄|🔢|💬|📨|📲|📱|⏳|🚫|🏁|🔍|📡|🌡|⚡|💰|💵|💳|🔧|🛠|👷|📅|🕐|📍|✅|❌|📋|📝|🚨|🔗|👤|📊)/g;
 
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
@@ -1074,13 +1094,15 @@
     const texto = String(mensagem || "");
     return texto
       .normalize("NFC")
-      // Remove only emoji modifiers that commonly break legacy clients.
+      // Remove modifiers/joiners that break rendering in older clients.
       .replace(/\uFE0F/g, "")
       .replace(/\u200D/g, "")
-      // Padroniza ícones para um conjunto seguro em Android/iOS.
-      .replace(/[👋❄🔢💬📨📲⏳🚫🏁🔍📡🌡⚡]/g, function (icone) {
+      // Padroniza ícones em símbolos simples e amplamente suportados.
+      .replace(WHATSAPP_ICON_REGEX, function (icone) {
         return WHATSAPP_ICON_MAP[icone] || icone;
       })
+      // Qualquer emoji restante vira marcador seguro.
+      .replace(/[\uD83C-\uDBFF][\uDC00-\uDFFF]/g, "•")
       .replace(/[ \t]{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
