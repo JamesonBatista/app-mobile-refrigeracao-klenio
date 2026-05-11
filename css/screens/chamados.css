@@ -2166,3 +2166,365 @@
   color: rgba(180, 220, 255, 0.5);
   font-size: 13px;
 }
+
+.tp-screen,
+.ta-screen {
+  position: relative;
+  min-height: 100dvh;
+  background: #0a1628;
+  overflow: hidden;
+}
+
+.tp-fundos,
+.ta-fundos {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  overflow: hidden;
+}
+
+.tp-floco,
+.ta-floco {
+  position: absolute;
+  top: -30px;
+  left: var(--x);
+  color: rgba(180, 220, 255, 0.7);
+  font-size: var(--size);
+  opacity: 0;
+  animation: chFlocoFall var(--dur) linear infinite;
+  animation-delay: var(--delay);
+}
+
+.tp-scroll,
+.ta-scroll {
+  position: relative;
+  z-index: 1;
+  min-height: 100dvh;
+  width: 100%;
+  max-width: 680px;
+  margin: 0 auto;
+  padding: 20px 16px 28px;
+}
+
+.tp-new-btn {
+  width: 100%;
+  margin-bottom: 20px;
+  border-radius: 12px;
+  border: 1px solid rgba(56, 182, 255, 0.3);
+  background: rgba(56, 182, 255, 0.1);
+  color: #38b6ff;
+  font-size: 14px;
+  font-weight: 700;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.tp-form-actions {
+  margin-top: 14px;
+  display: flex;
+  gap: 10px;
+}
+
+.tp-form-actions .op-btn {
+  margin-top: 0;
+}
+
+.tp-loading {
+  display: grid;
+  place-items: center;
+  padding: 40px 0;
+}
+
+.tp-empty {
+  text-align: center;
+  padding: 60px 0;
+}
+
+.tp-empty-title {
+  color: #fff;
+  font-size: 16px;
+  font-weight: 700;
+  margin-top: 16px;
+}
+
+.tp-empty-sub {
+  color: rgba(180, 220, 255, 0.5);
+  font-size: 13px;
+  margin-top: 8px;
+}
+
+.tp-card {
+  border-radius: 16px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.06);
+  padding: 16px;
+  margin-bottom: 12px;
+}
+
+.tp-card-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.tp-user-wrap {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 700;
+  flex: 1;
+}
+
+.tp-user-wrap small {
+  color: rgba(180, 220, 255, 0.6);
+  font-size: 12px;
+  font-weight: 400;
+}
+
+.tp-avatar {
+  width: 36px;
+  height: 36px;
+  border-radius: 18px;
+  background: rgba(56, 182, 255, 0.2);
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.tp-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.tp-btn-edit,
+.tp-btn-delete {
+  border-radius: 8px;
+  border: 1px solid;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 6px 10px;
+}
+
+.tp-btn-edit {
+  border-color: rgba(56, 182, 255, 0.3);
+  background: rgba(56, 182, 255, 0.1);
+  color: #38b6ff;
+}
+
+.tp-btn-delete {
+  border-color: rgba(231, 76, 60, 0.3);
+  background: rgba(231, 76, 60, 0.1);
+  color: #e74c3c;
+}
+
+.tp-phone {
+  margin-top: 8px;
+  margin-left: 44px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: rgba(180, 220, 255, 0.6);
+  font-size: 12px;
+}
+
+.ta-alert {
+  border-radius: 12px;
+  border: 1px solid rgba(243, 156, 18, 0.3);
+  background: rgba(243, 156, 18, 0.1);
+  color: #f39c12;
+  font-size: 13px;
+  margin-bottom: 16px;
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.ta-alert span:last-child {
+  flex: 1;
+}
+
+.ta-dias-scroll {
+  display: flex;
+  gap: 10px;
+  overflow-x: auto;
+  padding: 4px 0;
+}
+
+.ta-dia-btn {
+  width: 70px;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  text-align: center;
+  padding: 10px;
+  flex-shrink: 0;
+  cursor: pointer;
+}
+
+.ta-dia-btn.is-selected {
+  border-width: 2px;
+  border-color: #38b6ff;
+  background: rgba(56, 182, 255, 0.15);
+}
+
+.ta-dia-btn.is-total {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.ta-dia-btn.is-partial {
+  border-color: #f39c12;
+  background: rgba(243, 156, 18, 0.1);
+}
+
+.ta-dia-week {
+  color: rgba(180, 220, 255, 0.6);
+  text-transform: uppercase;
+  font-size: 10px;
+  margin-bottom: 4px;
+  display: block;
+}
+
+.ta-dia-week.is-sabado {
+  color: #f39c12;
+}
+
+.ta-dia-num {
+  display: block;
+  font-size: 20px;
+  font-weight: 700;
+  color: #fff;
+}
+
+.ta-dia-month {
+  display: block;
+  margin-top: 2px;
+  color: rgba(180, 220, 255, 0.5);
+  font-size: 10px;
+}
+
+.ta-dia-btn.is-selected .ta-dia-num {
+  color: #38b6ff;
+}
+
+.ta-dia-btn.is-total .ta-dia-num {
+  color: #e74c3c;
+}
+
+.ta-dia-tag {
+  display: block;
+  margin-top: 4px;
+  font-size: 9px;
+}
+
+.ta-dia-tag.total {
+  color: #e74c3c;
+}
+
+.ta-dia-tag.partial {
+  color: #f39c12;
+}
+
+.ta-card {
+  margin-top: 14px;
+}
+
+.ta-horario-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 16px;
+}
+
+.ta-horario-head .ch-sub {
+  margin-bottom: 0;
+}
+
+.ta-dia-completo-btn {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(231, 76, 60, 0.3);
+  background: rgba(231, 76, 60, 0.05);
+  color: rgba(231, 76, 60, 0.7);
+  font-size: 13px;
+  font-weight: 700;
+  margin-bottom: 16px;
+  padding: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  cursor: pointer;
+}
+
+.ta-dia-completo-btn.is-active {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.ta-horarios-list {
+  display: grid;
+  gap: 10px;
+}
+
+.ta-horario-btn {
+  width: 100%;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  background: rgba(255, 255, 255, 0.04);
+  padding: 14px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  cursor: pointer;
+}
+
+.ta-horario-btn.is-blocked {
+  border-color: rgba(231, 76, 60, 0.4);
+  background: rgba(231, 76, 60, 0.1);
+}
+
+.ta-horario-btn:disabled {
+  opacity: 0.5;
+}
+
+.ta-horario-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  color: #fff;
+  font-size: 14px;
+  font-weight: 600;
+}
+
+.ta-horario-btn.is-blocked .ta-horario-left {
+  color: #e74c3c;
+}
+
+.ta-status-pill {
+  border-radius: 20px;
+  background: rgba(39, 174, 96, 0.2);
+  color: #27ae60;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.ta-status-pill.blocked {
+  background: rgba(231, 76, 60, 0.2);
+  color: #e74c3c;
+}
