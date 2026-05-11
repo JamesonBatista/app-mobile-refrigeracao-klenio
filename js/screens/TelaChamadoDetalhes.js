@@ -926,7 +926,7 @@
     }
 
     function bindEvents() {
-      root.querySelector("#ad-content").addEventListener("click", function (event) {
+      root.querySelector(".ad-screen").addEventListener("click", function (event) {
         const actionEl = event.target.closest("[data-action]");
         if (!actionEl) return;
         const action = actionEl.dataset.action;
