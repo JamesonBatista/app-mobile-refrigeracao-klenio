@@ -293,3 +293,25 @@
   width: 100%;
   text-align: center;
 }
+
+.rs-success-card {
+  text-align: center;
+}
+
+.rs-success-icon {
+  font-size: 60px;
+}
+
+.rs-success-title {
+  margin-top: 20px;
+}
+
+.rs-success-sub {
+  margin-top: 8px;
+  margin-bottom: 0;
+}
+
+.rs-success-btn {
+  width: 200px;
+  margin: 30px auto 0;
+}
