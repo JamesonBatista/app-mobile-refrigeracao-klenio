@@ -474,7 +474,7 @@
     }
 
     function bindEvents() {
-      const container = root.querySelector("#ap-container");
+      const container = root.querySelector(".ap-screen");
       container.addEventListener("click", function (event) {
         const actionEl = event.target.closest("[data-action]");
         if (!actionEl) return;
