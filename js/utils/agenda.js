@@ -1056,12 +1056,11 @@
 
   function sanitizarMensagemWhatsApp(mensagem) {
     const texto = String(mensagem || "");
-    let semEmojis = texto;
-    try {
-      const emojiRegex = new RegExp("[\\p{Extended_Pictographic}\\uFE0F]", "gu");
-      semEmojis = texto.replace(emojiRegex, "");
-    } catch (error) {}
-    return semEmojis
+    return texto
+      .normalize("NFC")
+      // Remove only emoji modifiers that commonly break legacy clients.
+      .replace(/\uFE0F/g, "")
+      .replace(/\u200D/g, "")
       .replace(/[ \t]{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
