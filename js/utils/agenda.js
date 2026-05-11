@@ -29,43 +29,6 @@
     Cancelado: 4,
   };
 
-  const WHATSAPP_ICON_MAP = {
-    "👋": "▣",
-    "❄": "▣",
-    "🔢": "#",
-    "💬": "▣",
-    "📨": "▣",
-    "📲": "▣",
-    "📱": "▣",
-    "⏳": "!",
-    "🚫": "X",
-    "🏁": "✓",
-    "🔍": "▣",
-    "📡": "▣",
-    "🌡": "▣",
-    "⚡": "!",
-    "💰": "$",
-    "💵": "$",
-    "💳": "$",
-    "🔧": "▣",
-    "🛠": "▣",
-    "👷": "▣",
-    "📅": "◷",
-    "🕐": "◷",
-    "⏱": "◷",
-    "📍": "⌂",
-    "✅": "✓",
-    "❌": "X",
-    "📋": "▣",
-    "📝": "▣",
-    "🚨": "!",
-    "🔗": "→",
-    "👤": "▣",
-    "📊": "▣",
-  };
-
-  const WHATSAPP_ICON_REGEX = /(👋|❄|🔢|💬|📨|📲|📱|⏳|🚫|🏁|🔍|📡|🌡|⚡|💰|💵|💳|🔧|🛠|👷|📅|🕐|⏱|📍|✅|❌|📋|📝|🚨|🔗|👤|📊)/g;
-
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
     try {
@@ -1095,17 +1058,8 @@
     const texto = String(mensagem || "");
     return texto
       .normalize("NFC")
-      // Remove modifiers/joiners that break rendering in older clients.
-      .replace(/\uFE0F/g, "")
-      .replace(/\u200D/g, "")
-      // Padroniza ícones em símbolos simples e amplamente suportados.
-      .replace(WHATSAPP_ICON_REGEX, function (icone) {
-        return WHATSAPP_ICON_MAP[icone] || icone;
-      })
-      // Qualquer emoji restante vira marcador seguro.
-      .replace(/[\uD83C-\uDBFF][\uDC00-\uDFFF]/g, "•")
       // Corrige caractere já quebrado (replacement char).
-      .replace(/\uFFFD/g, "•")
+      .replace(/\uFFFD/g, "")
       .replace(/[ \t]{2,}/g, " ")
       .replace(/\n{3,}/g, "\n\n")
       .trim();
@@ -1115,13 +1069,30 @@
     if (!numero) return false;
     const textoBruto = String(mensagem || "");
     const texto = sanitizarMensagemWhatsApp(textoBruto) || textoBruto;
-    const url = `https://wa.me/${numero}?text=${encodeURIComponent(texto)}`;
+    const encoded = encodeURIComponent(texto);
+    const appUrl = `whatsapp://send?phone=${numero}&text=${encoded}`;
+    const webUrl = `https://wa.me/${numero}?text=${encoded}`;
+    const userAgent = navigator.userAgent || "";
+    const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
+
+    if (isMobile) {
+      try {
+        window.location.href = appUrl;
+        setTimeout(function () {
+          if (document.visibilityState === "visible") {
+            window.location.href = webUrl;
+          }
+        }, 1200);
+        return true;
+      } catch (error) {}
+    }
+
     let janela = null;
     try {
-      janela = window.open(url, "_blank", "noopener,noreferrer");
+      janela = window.open(webUrl, "_blank", "noopener,noreferrer");
     } catch (error) {}
     if (!janela) {
-      window.location.href = url;
+      window.location.href = webUrl;
     }
     return true;
   }

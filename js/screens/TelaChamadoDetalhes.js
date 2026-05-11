@@ -109,8 +109,13 @@
   }
 
   function calcularTempoAtendimento(chamado) {
-    if (!chamado.timestamp_Em_atendimento) return null;
-    const inicio = new Date(chamado.timestamp_Em_atendimento);
+    const historico = Array.isArray(chamado.historicoStatus) ? chamado.historicoStatus : [];
+    const inicioIso =
+      chamado.timestamp_Em_atendimento ||
+      (historico.find((item) => item.status === "Em atendimento" && item.iso) || {}).iso;
+    if (!inicioIso) return null;
+    const inicio = new Date(inicioIso);
+    if (Number.isNaN(inicio.getTime())) return null;
     const fim = new Date();
     const diffMin = Math.floor((fim - inicio) / 60000);
     const horas = Math.floor(diffMin / 60);
@@ -319,7 +324,7 @@
       state.salvando = true;
       render();
       const { data, hora, iso } = getNowStr();
-      const historicoStatus = [...(state.chamado.historicoStatus || []), { status: "Em atendimento", data, hora }];
+      const historicoStatus = [...(state.chamado.historicoStatus || []), { status: "Em atendimento", data, hora, iso }];
       const tecnicoNome = tecnico.nome || state.chamado.tecnico;
       await atualizarChamadoSafe(state.chamado.numero, {
         status: "Em atendimento",
@@ -343,17 +348,21 @@
       await notificarClientePush(
         state.chamado,
         "🔧 Atendimento iniciado!",
-        `O técnico ${tecnicoNome} iniciou o atendimento do chamado ${state.chamado.numero}.`
+        `O técnico ${tecnicoNome} iniciou o atendimento do chamado ${state.chamado.numero} às ${hora}.`
       );
 
       const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar WhatsApp?");
       if (ok) {
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +
-          `🔧 *Atendimento iniciado!*\n\n` +
+          `🚚 *Técnico em deslocamento para atendimento!*\n\n` +
           `🔢 Chamado: ${state.chamado.numero}\n` +
+          `📅 Data agendada: ${state.chamado.dataFormatada}\n` +
+          `🕐 Janela: ${state.chamado.horario}\n` +
+          `🕐 Início: ${data} às ${hora}\n` +
           `👷 Técnico: ${tecnicoNome}\n` +
-          `📍 Endereço: ${state.chamado.endereco}\n\n` +
+          `📍 Endereço: ${state.chamado.endereco}\n` +
+          `📡 Status: Técnico a caminho.\n\n` +
           `Klenio Refrigeração ❄`;
         abrirWhatsApp(state.chamado, mensagem);
       }
@@ -416,6 +425,16 @@
       const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar resumo no WhatsApp?");
       if (ok) {
         const isPix = state.formaPagamento === "Pix";
+        const inicioAtendimento = state.chamado.timestamp_Em_atendimento
+          ? new Date(state.chamado.timestamp_Em_atendimento)
+          : null;
+        const inicioAtendimentoFmt =
+          inicioAtendimento && !Number.isNaN(inicioAtendimento.getTime())
+            ? `${inicioAtendimento.toLocaleDateString("pt-BR")} às ${inicioAtendimento.toLocaleTimeString("pt-BR", {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}`
+            : null;
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +
           `🏁 *Seu atendimento foi concluído!*\n\n` +
@@ -425,8 +444,9 @@
           `📍 Endereço: ${state.chamado.endereco}\n` +
           `📅 Data: ${state.chamado.dataFormatada}\n` +
           `🕐 Horário: ${state.chamado.horario}\n` +
+          (inicioAtendimentoFmt ? `🕐 Início do atendimento: ${inicioAtendimentoFmt}\n` : "") +
           `👷 Técnico: ${state.chamado.tecnico || "-"}\n` +
-          (tempoAtendimento ? `⏱️ Tempo: ${tempoAtendimento}\n` : "") +
+          `⏱️ Tempo total: ${tempoAtendimento || "Não informado"}\n` +
           (state.observacao ? `📝 Observação: ${state.observacao}\n` : "") +
           `━━━━━━━━━━━━━━━━━━\n` +
           `💰 Valor: R$ ${state.valorCobrado.trim()}\n` +

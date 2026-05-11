@@ -107,6 +107,19 @@
       .replaceAll("'", "&#39;");
   }
 
+  function lerArquivoComoDataUrl(file) {
+    return new Promise(function (resolve, reject) {
+      const reader = new FileReader();
+      reader.onload = function () {
+        resolve(String(reader.result || ""));
+      };
+      reader.onerror = function () {
+        reject(new Error("Falha ao ler arquivo"));
+      };
+      reader.readAsDataURL(file);
+    });
+  }
+
   function renderTelaAbrirChamado(root, props) {
     const usuarioLogado = props && props.usuarioLogado ? props.usuarioLogado : {};
     const state = {
@@ -126,8 +139,6 @@
       carregandoHorarios: false,
       diasLotados: {},
     };
-
-    const urlsCriadas = new Set();
 
     async function verificarDiasLotados() {
       const lotados = {};
@@ -163,24 +174,27 @@
       render();
     }
 
-    function processarArquivos(files) {
+    async function processarArquivos(files) {
       if (!files || files.length === 0) return;
       const restantes = 5 - state.fotos.length;
-      Array.from(files).slice(0, restantes).forEach((file) => {
-        const uri = URL.createObjectURL(file);
-        urlsCriadas.add(uri);
-        state.fotos.push({ uri, nome: file.name || "foto" });
-      });
-      render();
+      const selecionados = Array.from(files).slice(0, restantes);
+      try {
+        const imagens = await Promise.all(
+          selecionados.map(async function (file) {
+            const uri = await lerArquivoComoDataUrl(file);
+            return { uri, nome: file.name || "foto" };
+          })
+        );
+        state.fotos.push(...imagens);
+        render();
+      } catch (error) {
+        window.alert("Erro ❄\nNão foi possível processar uma das imagens.");
+      }
     }
 
     function removerFoto(index) {
       if (!window.confirm("Deseja remover esta foto?")) return;
       const foto = state.fotos[index];
-      if (foto && urlsCriadas.has(foto.uri)) {
-        URL.revokeObjectURL(foto.uri);
-        urlsCriadas.delete(foto.uri);
-      }
       state.fotos = state.fotos.filter((_, i) => i !== index);
       if (state.fotoExpandida === foto?.uri) state.fotoExpandida = null;
       render();
@@ -587,7 +601,7 @@
     verificarDiasLotados();
 
     return function cleanupAbrirChamado() {
-      urlsCriadas.clear();
+      // sem cleanup necessário: imagens são salvas como data URL
     };
   }
 
