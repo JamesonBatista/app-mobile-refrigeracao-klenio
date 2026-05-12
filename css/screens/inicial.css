@@ -351,3 +351,335 @@
   font-size: 12px;
   cursor: pointer;
 }
+
+/* ===== Upgrade Futurista IA ===== */
+.ti-root {
+  --ti-accent: #38b6ff;
+  --ti-accent-soft: rgba(56, 182, 255, 0.25);
+  --ti-bg-a: #020d22;
+  --ti-bg-b: #041734;
+  --ti-bg-c: #031028;
+  background:
+    radial-gradient(1200px 500px at 50% -130px, rgba(56, 182, 255, 0.19), transparent 64%),
+    linear-gradient(180deg, var(--ti-bg-b) 0%, var(--ti-bg-c) 52%, var(--ti-bg-a) 100%);
+}
+
+.ti-root.is-drop-mode {
+  --ti-bg-b: #081827;
+  --ti-bg-c: #071420;
+  --ti-bg-a: #04111b;
+}
+
+.ti-grid-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  opacity: 0.4;
+  background:
+    linear-gradient(rgba(130, 185, 255, 0.08) 1px, transparent 1px) 0 0 / 100% 36px,
+    linear-gradient(90deg, rgba(130, 185, 255, 0.08) 1px, transparent 1px) 0 0 / 36px 100%;
+  mask-image: linear-gradient(to bottom, transparent 0%, rgba(0, 0, 0, 0.9) 35%, rgba(0, 0, 0, 1) 100%);
+}
+
+.ti-orb {
+  position: absolute;
+  border-radius: 50%;
+  pointer-events: none;
+  filter: blur(8px);
+}
+
+.ti-orb-a {
+  width: 220px;
+  height: 220px;
+  top: 9%;
+  left: -80px;
+  background: rgba(89, 200, 255, 0.3);
+  animation: tiOrbDriftA 10s ease-in-out infinite;
+}
+
+.ti-orb-b {
+  width: 240px;
+  height: 240px;
+  right: -120px;
+  bottom: 18%;
+  background: rgba(84, 117, 255, 0.24);
+  animation: tiOrbDriftB 12s ease-in-out infinite;
+}
+
+@keyframes tiOrbDriftA {
+  0%,
+  100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(22px, -24px, 0); }
+}
+
+@keyframes tiOrbDriftB {
+  0%,
+  100% { transform: translate3d(0, 0, 0); }
+  50% { transform: translate3d(-24px, 20px, 0); }
+}
+
+.ti-content {
+  width: min(100%, 430px);
+  margin: 0 auto;
+  padding: 18px 18px 24px;
+}
+
+.ti-temp-card {
+  min-width: 174px;
+  padding: 10px 20px;
+  border: 1px solid rgba(82, 193, 255, 0.45);
+  background: linear-gradient(160deg, rgba(8, 39, 68, 0.66), rgba(3, 27, 47, 0.5));
+  box-shadow:
+    inset 0 0 20px rgba(106, 215, 255, 0.08),
+    0 8px 30px rgba(0, 18, 41, 0.45);
+  backdrop-filter: blur(5px);
+}
+
+.ti-temp-value {
+  font-size: clamp(32px, 7vw, 40px);
+  letter-spacing: 0.8px;
+  text-shadow: 0 0 15px rgba(56, 182, 255, 0.42);
+  text-shadow: 0 0 15px color-mix(in srgb, var(--ti-accent) 42%, transparent);
+}
+
+.ti-temp-desc {
+  margin-top: 5px;
+  font-size: 12px;
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.ti-bar-wrap {
+  width: min(260px, 88%);
+  margin-bottom: 24px;
+}
+
+.ti-bar {
+  height: 8px;
+  border-radius: 999px;
+  border: 1px solid rgba(110, 186, 255, 0.2);
+  background: rgba(7, 25, 49, 0.85);
+}
+
+.ti-bar-fill {
+  height: 100%;
+  border-radius: 999px;
+  box-shadow: 0 0 18px rgba(56, 182, 255, 0.55);
+  box-shadow: 0 0 18px color-mix(in srgb, var(--ti-accent) 64%, transparent);
+}
+
+.ti-bar-labels {
+  margin-top: 8px;
+  font-size: 12px;
+  font-weight: 600;
+  letter-spacing: 0.35px;
+}
+
+.ti-controls {
+  gap: 24px;
+  margin-bottom: 22px;
+}
+
+.ti-temp-btn {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  border: 1px solid rgba(92, 186, 255, 0.46);
+  background: linear-gradient(180deg, rgba(14, 56, 94, 0.6), rgba(10, 38, 68, 0.74));
+  box-shadow: inset 0 0 13px rgba(120, 215, 255, 0.16);
+}
+
+.ti-temp-btn span {
+  text-shadow: 0 0 12px rgba(98, 209, 255, 0.45);
+}
+
+.ti-temp-btn.is-hot {
+  border-color: rgba(255, 97, 97, 0.45);
+  background: linear-gradient(180deg, rgba(87, 30, 43, 0.52), rgba(64, 18, 32, 0.74));
+  box-shadow: inset 0 0 13px rgba(255, 138, 138, 0.2);
+}
+
+.ti-logo-wrap {
+  width: 120px;
+  height: 120px;
+}
+
+.ti-logo-glow {
+  inset: -28px;
+  background: radial-gradient(circle, rgba(56, 182, 255, 0.35) 0%, transparent 70%);
+  background:
+    radial-gradient(circle, color-mix(in srgb, var(--ti-accent) 40%, transparent) 0%, transparent 70%);
+}
+
+.ti-logo-border {
+  inset: -12px;
+  border-width: 1.2px;
+  border-style: solid;
+  border-color: rgba(56, 182, 255, 0.45);
+  border-color: color-mix(in srgb, var(--ti-accent) 45%, transparent);
+  animation: tiBorderRotate 8s linear infinite;
+}
+
+@keyframes tiBorderRotate {
+  0% { transform: rotate(0deg); }
+  100% { transform: rotate(360deg); }
+}
+
+.ti-logo-btn {
+  width: 120px;
+  height: 120px;
+  border-radius: 60px;
+  border: 1.5px solid rgba(56, 182, 255, 0.72);
+  border: 1.5px solid color-mix(in srgb, var(--ti-accent) 70%, transparent);
+  background:
+    radial-gradient(circle at 30% 30%, rgba(122, 230, 255, 0.15), transparent 55%),
+    linear-gradient(180deg, rgba(12, 53, 89, 0.72), rgba(6, 30, 55, 0.92));
+  box-shadow:
+    inset 0 0 20px rgba(99, 212, 255, 0.25),
+    0 0 22px rgba(56, 182, 255, 0.35),
+    0 0 22px color-mix(in srgb, var(--ti-accent) 40%, transparent),
+    0 8px 28px rgba(0, 0, 0, 0.35);
+  font-size: 52px;
+}
+
+.ti-title {
+  margin-bottom: 10px;
+  font-size: clamp(36px, 8.4vw, 44px);
+  font-weight: 800;
+  letter-spacing: 0.4px;
+}
+
+.ti-line {
+  width: 190px;
+  height: 1.4px;
+}
+
+.ti-sub {
+  margin-bottom: 20px;
+  letter-spacing: 5px;
+  font-size: 11px;
+  font-weight: 600;
+}
+
+.ti-ai-panel {
+  width: min(100%, 410px);
+  margin-bottom: 20px;
+  border-radius: 16px;
+  border: 1px solid rgba(106, 196, 255, 0.3);
+  background:
+    linear-gradient(160deg, rgba(7, 33, 60, 0.78), rgba(5, 25, 47, 0.65));
+  box-shadow:
+    inset 0 0 16px rgba(83, 193, 255, 0.1),
+    0 10px 26px rgba(0, 10, 25, 0.4);
+  backdrop-filter: blur(5px);
+  overflow: hidden;
+}
+
+.ti-ai-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  font-size: 11px;
+  letter-spacing: 1.4px;
+  color: #8ecfff;
+  border-bottom: 1px solid rgba(131, 200, 255, 0.22);
+  text-transform: uppercase;
+}
+
+.ti-ai-live {
+  color: #40f7be;
+  font-weight: 700;
+  text-shadow: 0 0 8px rgba(64, 247, 190, 0.4);
+}
+
+.ti-ai-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  padding: 12px;
+}
+
+.ti-ai-cell {
+  border-radius: 11px;
+  border: 1px solid rgba(111, 193, 255, 0.2);
+  background: rgba(5, 20, 39, 0.56);
+  padding: 10px;
+}
+
+.ti-ai-cell > span {
+  display: block;
+  margin-bottom: 5px;
+  font-size: 10px;
+  letter-spacing: 0.8px;
+  text-transform: uppercase;
+  color: rgba(161, 214, 255, 0.72);
+}
+
+.ti-ai-cell > strong {
+  font-size: 14px;
+  color: #e7f6ff;
+  text-shadow: 0 0 10px rgba(88, 189, 255, 0.35);
+}
+
+.ti-actions {
+  gap: 12px;
+}
+
+.ti-action-btn {
+  position: relative;
+  border-radius: 15px;
+  padding: 15px 14px;
+  background:
+    linear-gradient(180deg, #2b8ccc 0%, #1c70ad 100%);
+  border: 1px solid rgba(130, 213, 255, 0.4);
+  box-shadow:
+    inset 0 0 14px rgba(170, 228, 255, 0.16),
+    0 8px 22px rgba(0, 22, 48, 0.4);
+  overflow: hidden;
+}
+
+.ti-action-btn::after {
+  content: "";
+  position: absolute;
+  top: 0;
+  left: -130%;
+  width: 110%;
+  height: 100%;
+  background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.24), transparent);
+  animation: tiBtnSweep 3.6s linear infinite;
+}
+
+@keyframes tiBtnSweep {
+  100% { left: 130%; }
+}
+
+.ti-action-btn.secondary {
+  background: linear-gradient(180deg, rgba(20, 69, 108, 0.8), rgba(10, 45, 76, 0.7));
+  border-color: rgba(73, 184, 255, 0.48);
+  color: #61c5ff;
+}
+
+.ti-admin-link {
+  color: rgba(176, 219, 250, 0.62);
+  letter-spacing: 0.5px;
+}
+
+.ti-admin-link:hover {
+  color: rgba(210, 236, 255, 0.9);
+}
+
+@media (max-width: 390px) {
+  .ti-content {
+    padding-inline: 14px;
+  }
+
+  .ti-sub {
+    letter-spacing: 3.6px;
+  }
+
+  .ti-ai-grid {
+    gap: 8px;
+    padding: 10px;
+  }
+}

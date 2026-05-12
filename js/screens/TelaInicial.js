@@ -43,6 +43,27 @@
     return "Derretendo! 💧🔥";
   }
 
+  function clamp(num, min, max) {
+    return Math.max(min, Math.min(max, num));
+  }
+
+  function getIndicadoresIA(temp, nivel) {
+    const desvio = Math.abs(temp - TEMP_NEUTRA);
+    const eficiencia = clamp(Math.round(100 - desvio * 9 - nivel * 1.2), 12, 99);
+    const risco = clamp(Math.round(desvio * 17 + nivel * 3), 1, 99);
+    const conforto = clamp(Math.round(100 - desvio * 12), 5, 98);
+    const predicao =
+      temp <= 20
+        ? "Resfriamento intenso"
+        : temp <= 23
+          ? "Faixa ideal"
+          : temp <= 26
+            ? "Calor moderado"
+            : "Sobrecarga térmica";
+
+    return { eficiencia, risco, conforto, predicao };
+  }
+
   function gerarTodosFlocos() {
     const largura = window.innerWidth || 390;
     return Array.from({ length: TOTAL_FLOCOS_MAX }, (_, i) => {
@@ -117,6 +138,9 @@
       <section class="ti-root" id="ti-root">
         <div class="ti-layer" id="ti-falling-layer"></div>
         <div class="ti-layer" id="ti-fixed-layer"></div>
+        <div class="ti-grid-overlay"></div>
+        <div class="ti-orb ti-orb-a"></div>
+        <div class="ti-orb ti-orb-b"></div>
 
         <div class="ti-content">
           <div class="ti-temp-card" id="ti-temp-card">
@@ -153,6 +177,31 @@
           <div class="ti-line" id="ti-line"></div>
           <p class="ti-sub" id="ti-sub">GESTÃO DE REFRIGERAÇÃO</p>
 
+          <div class="ti-ai-panel">
+            <div class="ti-ai-head">
+              <span>NÚCLEO IA</span>
+              <span class="ti-ai-live">● online</span>
+            </div>
+            <div class="ti-ai-grid">
+              <div class="ti-ai-cell">
+                <span>Predição</span>
+                <strong id="ti-ai-predicao"></strong>
+              </div>
+              <div class="ti-ai-cell">
+                <span>Eficiência</span>
+                <strong id="ti-ai-eficiencia"></strong>
+              </div>
+              <div class="ti-ai-cell">
+                <span>Risco térmico</span>
+                <strong id="ti-ai-risco"></strong>
+              </div>
+              <div class="ti-ai-cell">
+                <span>Conforto</span>
+                <strong id="ti-ai-conforto"></strong>
+              </div>
+            </div>
+          </div>
+
           <div class="ti-actions">
             <button class="ti-action-btn" id="ti-btn-entrar" type="button">❄ Entrar</button>
             <button class="ti-action-btn secondary" id="ti-btn-cadastro" type="button">✨ Criar minha conta</button>
@@ -180,6 +229,10 @@
     const titleEl = root.querySelector("#ti-title");
     const lineEl = root.querySelector("#ti-line");
     const subEl = root.querySelector("#ti-sub");
+    const aiPredicaoEl = root.querySelector("#ti-ai-predicao");
+    const aiEficienciaEl = root.querySelector("#ti-ai-eficiencia");
+    const aiRiscoEl = root.querySelector("#ti-ai-risco");
+    const aiConfortoEl = root.querySelector("#ti-ai-conforto");
 
     function salvarNivel(nivel) {
       try {
@@ -265,8 +318,11 @@
       const eGota = state.temperatura > TEMP_GOTA;
       const corTemp = getCorTemp(state.temperatura);
       const borderRatio = state.nivel / MAX_NIVEL;
+      const indicadores = getIndicadoresIA(state.temperatura, state.nivel);
 
       rootEl.classList.toggle("is-drop-mode", eGota);
+      rootEl.style.setProperty("--ti-accent", eGota ? "#64b4ff" : "#38b6ff");
+      rootEl.style.setProperty("--ti-accent-soft", eGota ? "rgba(100,180,255,0.28)" : "rgba(56,182,255,0.25)");
       tempValue.textContent = `${state.temperatura}°C`;
       tempDesc.textContent = getDescTemp(state.temperatura);
       tempValue.style.color = corTemp;
@@ -283,6 +339,10 @@
       titleEl.style.textShadow = `0 0 12px ${eGota ? "rgba(100,180,255,0.5)" : "rgba(56,182,255,0.5)"}`;
       lineEl.style.background = eGota ? "rgba(100,180,255,0.35)" : "rgba(56,182,255,0.35)";
       subEl.style.color = eGota ? "rgba(100,180,255,0.65)" : "rgba(56,182,255,0.65)";
+      aiPredicaoEl.textContent = indicadores.predicao;
+      aiEficienciaEl.textContent = `${indicadores.eficiencia}%`;
+      aiRiscoEl.textContent = `${indicadores.risco}%`;
+      aiConfortoEl.textContent = `${indicadores.conforto}%`;
 
       logoBorder.style.borderColor = eGota
         ? `rgba(100,180,255,${0.1 + borderRatio * 0.5})`
