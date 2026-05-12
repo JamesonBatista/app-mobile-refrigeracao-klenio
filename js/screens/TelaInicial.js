@@ -9,6 +9,7 @@
   const TEMP_NEUTRA = 22;
   const TOTAL_FLOCOS_MAX = 42;
   const TEMP_GOTA = 24;
+  const AI_FEED_MAX = 4;
 
   function getFlocosVisiveis(temp) {
     if (temp <= 17) return 42;
@@ -62,6 +63,13 @@
             : "Sobrecarga térmica";
 
     return { eficiencia, risco, conforto, predicao };
+  }
+
+  function gerarMensagemIA(temp, nivel, indicadores) {
+    if (temp <= 20) return `Criogênese ativa em ${indicadores.eficiencia}% • Camada fria L${nivel || 1}`;
+    if (temp <= 23) return `Zona ideal detectada • Conforto ${indicadores.conforto}% • Risco mínimo`;
+    if (temp <= 26) return `Compensação térmica iniciada • Ajuste de fluxo em tempo real`;
+    return `Alerta térmico: risco ${indicadores.risco}% • Recomendado reduzir temperatura`;
   }
 
   function gerarTodosFlocos() {
@@ -132,6 +140,10 @@
       flocosFixos: [],
       todosFlocos: gerarTodosFlocos(),
       fallingNodes: [],
+      waveBars: [],
+      aiFeed: [],
+      aiInterval: null,
+      waveInterval: null,
     };
 
     root.innerHTML = `
@@ -141,6 +153,7 @@
         <div class="ti-grid-overlay"></div>
         <div class="ti-orb ti-orb-a"></div>
         <div class="ti-orb ti-orb-b"></div>
+        <div class="ti-scanline"></div>
 
         <div class="ti-content">
           <div class="ti-temp-card" id="ti-temp-card">
@@ -163,6 +176,9 @@
             <button class="ti-temp-btn" id="ti-btn-minus" type="button"><span>−</span></button>
 
             <div class="ti-logo-wrap" id="ti-logo-wrap">
+              <div class="ti-hud-ring ring-1"></div>
+              <div class="ti-hud-ring ring-2"></div>
+              <div class="ti-hud-ring ring-3"></div>
               <div class="ti-logo-glow"></div>
               <div class="ti-logo-border" id="ti-logo-border"></div>
               <button class="ti-logo-btn" id="ti-logo-btn" type="button">
@@ -182,6 +198,7 @@
               <span>NÚCLEO IA</span>
               <span class="ti-ai-live">● online</span>
             </div>
+            <div class="ti-ai-wave" id="ti-ai-wave"></div>
             <div class="ti-ai-grid">
               <div class="ti-ai-cell">
                 <span>Predição</span>
@@ -200,6 +217,7 @@
                 <strong id="ti-ai-conforto"></strong>
               </div>
             </div>
+            <div class="ti-ai-stream" id="ti-ai-stream"></div>
           </div>
 
           <div class="ti-actions">
@@ -233,6 +251,44 @@
     const aiEficienciaEl = root.querySelector("#ti-ai-eficiencia");
     const aiRiscoEl = root.querySelector("#ti-ai-risco");
     const aiConfortoEl = root.querySelector("#ti-ai-conforto");
+    const aiWaveEl = root.querySelector("#ti-ai-wave");
+    const aiStreamEl = root.querySelector("#ti-ai-stream");
+
+    function renderAiFeed() {
+      aiStreamEl.innerHTML = state.aiFeed.map((msg) => `<p>› ${msg}</p>`).join("");
+    }
+
+    function pushAiMensagem(msg) {
+      state.aiFeed.unshift(msg);
+      state.aiFeed = state.aiFeed.slice(0, AI_FEED_MAX);
+      renderAiFeed();
+    }
+
+    function inicializarAiWave() {
+      aiWaveEl.innerHTML = Array.from({ length: 20 }, () => '<span class="ti-wave-bar"></span>').join("");
+      state.waveBars = Array.from(aiWaveEl.querySelectorAll(".ti-wave-bar"));
+    }
+
+    function atualizarAiWave() {
+      const energiaTemp = ((state.temperatura - TEMP_MIN) / (TEMP_MAX - TEMP_MIN)) * 40;
+      const energiaNivel = (state.nivel / MAX_NIVEL) * 34;
+      state.waveBars.forEach((bar, index) => {
+        const oscilacao = ((Math.sin(Date.now() / 420 + index * 0.55) + 1) / 2) * 35;
+        const ruído = Math.random() * 8;
+        const altura = clamp(14 + oscilacao + energiaTemp + energiaNivel + ruído, 14, 100);
+        bar.style.setProperty("--h", `${altura}%`);
+        bar.style.animationDuration = `${0.72 + Math.random() * 1.2}s`;
+      });
+    }
+
+    function atualizarParallax(clientX, clientY) {
+      const w = window.innerWidth || 390;
+      const h = window.innerHeight || 844;
+      const x = ((clientX / w) - 0.5) * 2;
+      const y = ((clientY / h) - 0.5) * 2;
+      rootEl.style.setProperty("--mx", `${x.toFixed(3)}`);
+      rootEl.style.setProperty("--my", `${y.toFixed(3)}`);
+    }
 
     function salvarNivel(nivel) {
       try {
@@ -343,6 +399,7 @@
       aiEficienciaEl.textContent = `${indicadores.eficiencia}%`;
       aiRiscoEl.textContent = `${indicadores.risco}%`;
       aiConfortoEl.textContent = `${indicadores.conforto}%`;
+      pushAiMensagem(gerarMensagemIA(state.temperatura, state.nivel, indicadores));
 
       logoBorder.style.borderColor = eGota
         ? `rgba(100,180,255,${0.1 + borderRatio * 0.5})`
@@ -359,6 +416,7 @@
 
       atualizarFlocosCaindo();
       renderFixed();
+      atualizarAiWave();
     }
 
     function handleLogoPress() {
@@ -401,10 +459,39 @@
       if (props && typeof props.setTela === "function") props.setTela("loginAdmin");
     });
 
+    rootEl.addEventListener("mousemove", (event) => {
+      atualizarParallax(event.clientX, event.clientY);
+    });
+
+    rootEl.addEventListener(
+      "touchmove",
+      (event) => {
+        if (!event.touches || !event.touches[0]) return;
+        atualizarParallax(event.touches[0].clientX, event.touches[0].clientY);
+      },
+      { passive: true }
+    );
+
+    rootEl.addEventListener("mouseleave", () => {
+      rootEl.style.setProperty("--mx", "0");
+      rootEl.style.setProperty("--my", "0");
+    });
+
     state.nivel = carregarNivelSalvo();
     state.flocosFixos = gerarFlocosFixos(state.nivel);
     criarFallingNodes();
+    inicializarAiWave();
+    state.waveInterval = window.setInterval(atualizarAiWave, 860);
+    state.aiInterval = window.setInterval(() => {
+      const indicadores = getIndicadoresIA(state.temperatura, state.nivel);
+      pushAiMensagem(gerarMensagemIA(state.temperatura, state.nivel, indicadores));
+    }, 2600);
     updateUI();
+
+    return function cleanupTelaInicial() {
+      if (state.waveInterval) window.clearInterval(state.waveInterval);
+      if (state.aiInterval) window.clearInterval(state.aiInterval);
+    };
   }
 
   window.Telas = window.Telas || {};
