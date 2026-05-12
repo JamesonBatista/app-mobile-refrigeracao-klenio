@@ -1,335 +1,308 @@
 /* css/screens/inicial.css */
 
-.vx-root {
-  --vx-accent: #67d7ff;
-  --vx-accent-soft: rgba(103, 215, 255, 0.35);
+.avx-root {
+  --avx-accent: #67d7ff;
+  --avx-accent-soft: rgba(103, 215, 255, 0.35);
   --mx: 0;
   --my: 0;
   position: relative;
   min-height: 100dvh;
   overflow: hidden;
   background:
-    radial-gradient(1200px 480px at 50% -120px, var(--vx-accent-soft), transparent 62%),
-    linear-gradient(180deg, #020612 0%, #040b1a 45%, #030711 100%);
+    linear-gradient(180deg, rgba(0, 0, 0, 0.28), rgba(0, 0, 0, 0.72)),
+    url("https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg") center / cover no-repeat;
   isolation: isolate;
 }
 
-.vx-root.is-void {
-  --vx-accent: #b07bff;
-  --vx-accent-soft: rgba(176, 123, 255, 0.33);
-}
-
-.vx-root.is-glitch {
-  --vx-accent: #ff6ea1;
-  --vx-accent-soft: rgba(255, 110, 161, 0.33);
-}
-
-.vx-canvas,
-.vx-noise,
-.vx-vignette {
+.avx-stars,
+.avx-overlay {
   position: absolute;
   inset: 0;
   pointer-events: none;
 }
 
-.vx-canvas {
+.avx-stars {
   z-index: 0;
 }
 
-.vx-noise {
-  z-index: 1;
-  opacity: 0.12;
-  background-image: repeating-linear-gradient(
-    to bottom,
-    rgba(255, 255, 255, 0.2) 0,
-    rgba(255, 255, 255, 0.2) 1px,
-    transparent 2px,
-    transparent 4px
-  );
-}
-
-.vx-vignette {
+.avx-overlay {
   z-index: 1;
   background:
-    radial-gradient(circle at 50% 42%, transparent 42%, rgba(0, 0, 0, 0.55) 100%),
-    radial-gradient(circle at 8% 16%, var(--vx-accent-soft), transparent 30%),
-    radial-gradient(circle at 90% 74%, rgba(98, 126, 255, 0.22), transparent 33%);
-  filter: blur(16px);
+    repeating-linear-gradient(
+      to bottom,
+      rgba(255, 255, 255, 0.13) 0,
+      rgba(255, 255, 255, 0.13) 1px,
+      transparent 2px,
+      transparent 5px
+    ),
+    linear-gradient(180deg, rgba(3, 9, 19, 0.58), rgba(2, 5, 11, 0.78));
+  opacity: 0.45;
 }
 
-.vx-shell {
+.avx-shell {
   position: relative;
   z-index: 3;
   width: min(100%, 430px);
   min-height: 100dvh;
   margin: 0 auto;
   padding: 14px 12px 22px;
-  transform: translate3d(calc(var(--mx) * 8px), calc(var(--my) * 10px), 0);
-  transition: transform 180ms ease-out;
+  transform: translate3d(calc(var(--mx) * 7px), calc(var(--my) * 9px), 0);
+  transition: transform 180ms ease;
 }
 
-.vx-shell::before {
+.avx-shell::before {
   content: "";
   position: absolute;
-  inset: 8px 6px;
+  inset: 8px;
   z-index: -1;
-  border-radius: 20px;
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 30%, transparent);
-  background: linear-gradient(180deg, rgba(10, 20, 38, 0.67), rgba(5, 12, 26, 0.83));
+  border-radius: 0;
+  border: 1px solid color-mix(in srgb, var(--avx-accent) 42%, transparent);
+  background: linear-gradient(180deg, rgba(6, 15, 30, 0.8), rgba(3, 9, 20, 0.88));
   box-shadow:
-    inset 0 0 24px color-mix(in srgb, var(--vx-accent) 12%, transparent),
-    0 14px 34px rgba(0, 0, 0, 0.52);
-  backdrop-filter: blur(6px);
+    inset 0 0 24px color-mix(in srgb, var(--avx-accent) 14%, transparent),
+    0 16px 40px rgba(0, 0, 0, 0.52);
+  clip-path: polygon(0 0, 94% 0, 100% 8%, 100% 100%, 6% 100%, 0 92%);
 }
 
-.vx-top {
+.avx-header {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   justify-content: space-between;
   margin-bottom: 12px;
 }
 
-.vx-tag {
-  font-size: 10px;
-  letter-spacing: 1.2px;
-  color: rgba(185, 230, 255, 0.88);
-  border-radius: 999px;
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 45%, transparent);
-  padding: 6px 10px;
-}
-
-.vx-random {
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 45%, transparent);
-  border-radius: 999px;
-  background: color-mix(in srgb, var(--vx-accent) 16%, rgba(10, 25, 46, 0.8));
-  color: #f2f9ff;
-  font-size: 10px;
-  letter-spacing: 1px;
-  padding: 7px 11px;
-}
-
-.vx-core-wrap {
-  display: flex;
-  justify-content: center;
-  margin: 16px 0 12px;
-}
-
-.vx-core {
-  position: relative;
-  width: 156px;
-  height: 156px;
-  border-radius: 50%;
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 46%, transparent);
-  background:
-    radial-gradient(circle at 28% 28%, rgba(178, 237, 255, 0.22), transparent 52%),
-    linear-gradient(180deg, rgba(13, 45, 75, 0.62), rgba(7, 26, 48, 0.92));
-  box-shadow:
-    inset 0 0 24px color-mix(in srgb, var(--vx-accent) 28%, transparent),
-    0 0 30px color-mix(in srgb, var(--vx-accent) 26%, transparent);
-  display: grid;
-  place-items: center;
-}
-
-.vx-ring {
-  position: absolute;
-  border-radius: 50%;
-  pointer-events: none;
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 30%, transparent);
-}
-
-.vx-ring.r1 {
-  inset: -10px;
-  animation: vxSpinA 6s linear infinite;
-}
-
-.vx-ring.r2 {
-  inset: -20px;
-  border-style: dashed;
-  animation: vxSpinB 7.1s linear infinite;
-}
-
-.vx-ring.r3 {
-  inset: -31px;
-  opacity: 0.75;
-  animation: vxPulseRing 2.3s ease-in-out infinite;
-}
-
-.vx-core-symbol {
-  font-size: 58px;
-  color: #e8f7ff;
-  text-shadow: 0 0 14px var(--vx-accent-soft);
-}
-
-.vx-mode-row {
-  display: grid;
-  grid-template-columns: repeat(3, minmax(0, 1fr));
-  gap: 8px;
-  margin-bottom: 12px;
-}
-
-.vx-mode {
-  border-radius: 11px;
-  border: 1px solid rgba(134, 206, 255, 0.26);
-  background: rgba(13, 30, 54, 0.66);
-  color: rgba(191, 230, 255, 0.8);
-  font-size: 13px;
-  font-weight: 700;
-  letter-spacing: 0.4px;
-  padding: 10px 6px;
-}
-
-.vx-mode.is-active {
-  border-color: color-mix(in srgb, var(--vx-accent) 58%, transparent);
-  background: color-mix(in srgb, var(--vx-accent) 20%, rgba(10, 30, 54, 0.78));
-  color: #f4fbff;
-  box-shadow: 0 0 16px color-mix(in srgb, var(--vx-accent) 30%, transparent);
-}
-
-.vx-panel {
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 30%, transparent);
-  border-radius: 14px;
-  background: linear-gradient(170deg, rgba(10, 30, 54, 0.78), rgba(6, 17, 35, 0.72));
-  padding: 10px;
-}
-
-.vx-panel-line {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-}
-
-.vx-panel-line span {
-  color: rgba(161, 216, 255, 0.7);
-  font-size: 10px;
-  letter-spacing: 0.8px;
-  text-transform: uppercase;
-}
-
-.vx-panel-line strong {
-  color: #ecf7ff;
-  font-size: 12px;
-}
-
-.vx-slider {
-  margin: 10px 0;
-  width: 100%;
-  accent-color: var(--vx-accent);
-}
-
-.vx-wave {
-  display: flex;
-  align-items: flex-end;
-  gap: 3px;
-  height: 44px;
-}
-
-.vx-wave-bar {
-  flex: 1;
-  min-width: 3px;
-  height: var(--h, 20%);
-  border-radius: 999px;
-  background: linear-gradient(180deg, #a0eaff 0%, #44ace7 70%, #246893 100%);
-  box-shadow: 0 0 8px color-mix(in srgb, var(--vx-accent) 34%, transparent);
-}
-
-.vx-console {
-  margin-top: 11px;
-  border: 1px solid rgba(128, 198, 255, 0.26);
-  border-radius: 12px;
-  background: rgba(6, 17, 31, 0.75);
-  padding: 10px;
-}
-
-.vx-console-main {
-  margin: 0 0 6px;
-  font-size: 12px;
-  color: rgba(220, 241, 255, 0.92);
-}
-
-.vx-feed {
-  min-height: 84px;
-}
-
-.vx-feed p {
+.avx-eyebrow {
   margin: 0;
-  color: rgba(173, 219, 255, 0.84);
+  color: rgba(175, 224, 255, 0.8);
+  font-size: 10px;
+  letter-spacing: 1.7px;
+}
+
+.avx-title {
+  margin: 3px 0 0;
+  color: #f5faff;
+  font-size: clamp(25px, 6vw, 31px);
+  line-height: 1;
+  letter-spacing: 1.1px;
+}
+
+.avx-random {
+  border: 1px solid color-mix(in srgb, var(--avx-accent) 46%, transparent);
+  background: color-mix(in srgb, var(--avx-accent) 16%, rgba(13, 33, 59, 0.78));
+  color: #eef7ff;
+  border-radius: 0;
+  font-size: 11px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+  padding: 8px 10px;
+  clip-path: polygon(0 0, 92% 0, 100% 26%, 100% 100%, 8% 100%, 0 74%);
+}
+
+.avx-hero-strip {
+  display: grid;
+  grid-auto-flow: column;
+  grid-auto-columns: minmax(102px, 1fr);
+  gap: 8px;
+  overflow-x: auto;
+  padding-bottom: 4px;
+  margin-bottom: 12px;
+}
+
+.avx-hero-strip::-webkit-scrollbar {
+  height: 6px;
+}
+
+.avx-hero-strip::-webkit-scrollbar-thumb {
+  background: color-mix(in srgb, var(--avx-accent) 55%, transparent);
+}
+
+.avx-hero-btn {
+  border: 1px solid rgba(136, 206, 255, 0.26);
+  border-radius: 0;
+  background: rgba(11, 26, 46, 0.78);
+  padding: 4px;
+  color: rgba(181, 224, 255, 0.82);
+  text-align: left;
+  clip-path: polygon(0 0, 92% 0, 100% 14%, 100% 100%, 8% 100%, 0 86%);
+}
+
+.avx-hero-btn.is-active {
+  border-color: color-mix(in srgb, var(--avx-accent) 60%, transparent);
+  background: color-mix(in srgb, var(--avx-accent) 16%, rgba(11, 26, 46, 0.84));
+  color: #f4fbff;
+  box-shadow: 0 0 16px color-mix(in srgb, var(--avx-accent) 30%, transparent);
+}
+
+.avx-hero-thumb {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1.15;
+  background-size: cover;
+  background-position: center;
+}
+
+.avx-hero-name {
+  display: block;
+  margin-top: 4px;
+  padding: 0 2px 3px;
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.7px;
+}
+
+.avx-main {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 10px;
+}
+
+.avx-poster-card,
+.avx-intel-card,
+.avx-feed-card {
+  border: 1px solid rgba(133, 202, 255, 0.24);
+  background: rgba(6, 17, 33, 0.8);
+  clip-path: polygon(0 0, 96% 0, 100% 8%, 100% 100%, 4% 100%, 0 92%);
+}
+
+.avx-poster {
+  min-height: 208px;
+  background-size: cover;
+  background-position: center;
+}
+
+.avx-poster-info {
+  padding: 10px;
+}
+
+.avx-hero-role {
+  margin: 0;
+  color: #f4faff;
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: 0.45px;
+}
+
+.avx-hero-identity {
+  margin: 4px 0 0;
+  color: rgba(167, 218, 255, 0.84);
+  font-size: 12px;
+}
+
+.avx-intel-card {
+  padding: 10px;
+}
+
+.avx-intel-line {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+
+.avx-intel-line + .avx-intel-line {
+  margin-top: 5px;
+}
+
+.avx-intel-line span {
+  color: rgba(155, 214, 255, 0.74);
+  font-size: 11px;
+}
+
+.avx-intel-line strong {
+  color: #eef8ff;
+  font-size: 12px;
+}
+
+.avx-quote {
+  margin: 9px 0 0;
+  color: rgba(204, 237, 255, 0.95);
+  font-size: 13px;
+  line-height: 1.43;
+}
+
+.avx-feed-card {
+  padding: 10px;
+}
+
+.avx-feed-title {
+  margin: 0 0 7px;
+  color: #e6f5ff;
+  font-size: 12px;
+  letter-spacing: 0.8px;
+}
+
+.avx-feed {
+  min-height: 82px;
+}
+
+.avx-feed p {
+  margin: 0;
+  color: rgba(171, 222, 255, 0.83);
   font-size: 11px;
   line-height: 1.45;
 }
 
-.vx-feed p + p {
-  margin-top: 3px;
+.avx-feed p + p {
+  margin-top: 4px;
 }
 
-.vx-actions {
+.avx-actions {
   margin-top: 12px;
   display: grid;
   gap: 10px;
 }
 
-.vx-btn {
+.avx-btn {
   width: 100%;
-  border-radius: 14px;
+  border-radius: 0;
+  border: 1px solid transparent;
   padding: 14px 12px;
-  font-size: 19px;
+  font-size: 18px;
   font-weight: 800;
+  clip-path: polygon(0 0, 95% 0, 100% 16%, 100% 100%, 5% 100%, 0 84%);
 }
 
-.vx-btn.main {
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 45%, transparent);
-  background: linear-gradient(180deg, #3298d9 0%, #216ea9 100%);
+.avx-btn.main {
+  background: linear-gradient(180deg, #2f95d8 0%, #1f76b0 100%);
+  border-color: color-mix(in srgb, var(--avx-accent) 48%, transparent);
   color: #f6fcff;
 }
 
-.vx-btn.ghost {
-  border: 1px solid color-mix(in srgb, var(--vx-accent) 43%, transparent);
-  background: rgba(14, 43, 71, 0.74);
-  color: #7dd1ff;
+.avx-btn.ghost {
+  background: rgba(14, 45, 74, 0.74);
+  border-color: color-mix(in srgb, var(--avx-accent) 50%, transparent);
+  color: #77ceff;
 }
 
-.vx-admin {
+.avx-admin {
   border: 0;
   background: transparent;
-  color: rgba(177, 218, 248, 0.62);
+  color: rgba(176, 220, 251, 0.64);
   font-size: 12px;
-  letter-spacing: 0.45px;
+  letter-spacing: 0.5px;
+  padding: 8px;
 }
 
-.vx-shell.is-pulse .vx-core {
-  animation: vxShellPulse 520ms ease;
+.avx-shell.is-pulse {
+  animation: avxPulse 540ms ease;
 }
 
-@keyframes vxSpinA {
-  to { transform: rotate(360deg); }
-}
-
-@keyframes vxSpinB {
-  to { transform: rotate(-360deg); }
-}
-
-@keyframes vxPulseRing {
-  0%, 100% { opacity: 0.5; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.07); }
-}
-
-@keyframes vxShellPulse {
+@keyframes avxPulse {
   0% { transform: scale(1); }
-  26% { transform: scale(1.05); }
-  48% { transform: scale(0.94); }
+  26% { transform: scale(1.02); }
+  54% { transform: scale(0.98); }
   100% { transform: scale(1); }
 }
 
 @media (max-width: 390px) {
-  .vx-shell {
+  .avx-shell {
     padding-inline: 8px;
   }
 
-  .vx-tag,
-  .vx-random {
-    font-size: 9px;
+  .avx-title {
+    font-size: 24px;
   }
 
-  .vx-btn {
-    font-size: 17px;
+  .avx-btn {
+    font-size: 16px;
   }
 }
