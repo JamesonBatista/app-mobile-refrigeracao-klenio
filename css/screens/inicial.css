@@ -15,7 +15,7 @@
   isolation: isolate;
 }
 
-.nx-root.is-heat-mode {
+.nx-root.is-chaos-mode {
   background:
     radial-gradient(900px 360px at 50% -100px, rgba(255, 101, 118, 0.22), transparent 60%),
     linear-gradient(180deg, #18050d 0%, #140813 46%, #10040e 100%);

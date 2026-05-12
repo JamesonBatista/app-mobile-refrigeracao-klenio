@@ -20,12 +20,12 @@
   }
 
   function temperaturaParaTexto(temp) {
-    if (temp <= 17) return "Criogenia extrema";
-    if (temp <= 19) return "Fase polar";
-    if (temp <= 22) return "Zona ideal";
-    if (temp <= 24) return "Transicao termica";
-    if (temp <= 26) return "Aquecimento moderado";
-    return "Risco de sobrecarga";
+    if (temp <= 17) return "Sinal no vazio";
+    if (temp <= 19) return "Orbita estavel";
+    if (temp <= 22) return "Janela de sincronia";
+    if (temp <= 24) return "Transicao de fase";
+    if (temp <= 26) return "Campo turbulento";
+    return "Fronteira do caos";
   }
 
   function gerarIndicadores(temp, nivel) {
@@ -35,12 +35,12 @@
     const conforto = clamp(Math.round(100 - desvio * 12), 3, 98);
     const predicao =
       temp <= 20
-        ? "Resfriamento agressivo"
+        ? "Fluxo convergente"
         : temp <= 23
-          ? "Estabilidade total"
+          ? "Equilibrio neural"
           : temp <= 26
-            ? "Compensacao em curso"
-            : "Pressao termica elevada";
+            ? "Latencia crescente"
+            : "Ruptura iminente";
 
     return { eficiencia, risco, conforto, predicao };
   }
@@ -84,7 +84,7 @@
 
         <div class="nx-shell" id="nx-shell">
           <header class="nx-topline">
-            <span class="nx-chip">NEURAL CLIMATE OS</span>
+            <span class="nx-chip">SINGULARITY OPS</span>
             <span class="nx-clock" id="nx-clock"></span>
           </header>
 
@@ -98,9 +98,9 @@
               <div class="nx-spectrum-fill" id="nx-spectrum-fill"></div>
             </div>
             <div class="nx-spectrum-labels">
-              <span>17°</span>
-              <span>23°</span>
-              <span>29°</span>
+              <span>L17</span>
+              <span>L23</span>
+              <span>L29</span>
             </div>
           </div>
 
@@ -111,14 +111,14 @@
               <span class="nx-ring nx-ring-1"></span>
               <span class="nx-ring nx-ring-2"></span>
               <span class="nx-ring nx-ring-3"></span>
-              <span class="nx-reactor-symbol" id="nx-reactor-symbol">❄</span>
+              <span class="nx-reactor-symbol" id="nx-reactor-symbol">✶</span>
             </button>
 
             <button class="nx-step is-hot" id="nx-plus" type="button">+</button>
           </div>
 
-          <h1 class="nx-title">Klenio Refrigeração</h1>
-          <p class="nx-subtitle">CYBER THERMAL COMMAND INTERFACE</p>
+          <h1 class="nx-title">NEXUS // KLENIO</h1>
+          <p class="nx-subtitle">COGNITIVE COMMAND INTERFACE</p>
 
           <section class="nx-ai-panel">
             <header class="nx-ai-head">
@@ -139,8 +139,8 @@
           </section>
 
           <div class="nx-actions">
-            <button class="nx-btn main" id="nx-entrar" type="button">Entrar no sistema</button>
-            <button class="nx-btn ghost" id="nx-cadastro" type="button">Criar minha conta</button>
+            <button class="nx-btn main" id="nx-entrar" type="button">Iniciar experiencia</button>
+            <button class="nx-btn ghost" id="nx-cadastro" type="button">Criar identidade</button>
             <button class="nx-admin" id="nx-admin" type="button">Acesso administrativo -></button>
           </div>
         </div>
@@ -208,15 +208,15 @@
       rootEl.style.setProperty("--nx-accent", color);
       rootEl.style.setProperty("--nx-accent-soft", `${color}55`);
       rootEl.style.setProperty("--nx-heat", state.temperatura > 25 ? "#ff6470" : "#5ad7ff");
-      rootEl.classList.toggle("is-heat-mode", state.temperatura > 24);
+      rootEl.classList.toggle("is-chaos-mode", state.temperatura > 24);
 
-      tempValueEl.textContent = `${state.temperatura}°C`;
+      tempValueEl.textContent = `N${state.temperatura}`;
       tempDescEl.textContent = temperaturaParaTexto(state.temperatura);
       tempCardEl.style.borderColor = `${color}88`;
       spectrumFillEl.style.width = `${ratio * 100}%`;
       spectrumFillEl.style.background = color;
 
-      reactorSymbolEl.textContent = state.temperatura > 24 ? "💧" : "❄";
+      reactorSymbolEl.textContent = state.temperatura > 24 ? "◆" : "✶";
       predicaoEl.textContent = indicadores.predicao;
       eficienciaEl.textContent = `${indicadores.eficiencia}%`;
       riscoEl.textContent = `${indicadores.risco}%`;
@@ -299,13 +299,13 @@
     function onMinus() {
       if (state.temperatura <= TEMP_MIN) return;
       state.temperatura -= 1;
-      updateUI("temp -1");
+      updateUI("fluxo -1");
     }
 
     function onPlus() {
       if (state.temperatura >= TEMP_MAX) return;
       state.temperatura += 1;
-      updateUI("temp +1");
+      updateUI("fluxo +1");
     }
 
     function onCore() {
