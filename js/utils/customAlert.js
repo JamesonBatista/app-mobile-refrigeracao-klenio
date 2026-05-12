@@ -1,0 +1,88 @@
+(function () {
+  const nativeAlert = typeof window.alert === "function" ? window.alert.bind(window) : null;
+  const queue = [];
+  const state = {
+    aberto: false,
+    overlay: null,
+    msgEl: null,
+    okBtn: null,
+  };
+
+  function toMessage(value) {
+    if (value === undefined || value === null) return "";
+    return String(value);
+  }
+
+  function ensureElements() {
+    if (state.overlay) return true;
+    if (!document.body) return false;
+
+    const overlay = document.createElement("div");
+    overlay.className = "ka-alert-overlay";
+    overlay.innerHTML = `
+      <div class="ka-alert-card" role="dialog" aria-modal="true" aria-label="Mensagem do sistema">
+        <header class="ka-alert-header">Klenio Refrigeração</header>
+        <section class="ka-alert-body">
+          <p class="ka-alert-message"></p>
+        </section>
+        <footer class="ka-alert-footer">
+          <button class="ka-alert-ok" type="button">OK</button>
+        </footer>
+      </div>
+    `;
+
+    document.body.appendChild(overlay);
+    state.overlay = overlay;
+    state.msgEl = overlay.querySelector(".ka-alert-message");
+    state.okBtn = overlay.querySelector(".ka-alert-ok");
+
+    state.okBtn.addEventListener("click", closeAlert);
+    overlay.addEventListener("click", function (event) {
+      if (event.target === overlay) closeAlert();
+    });
+    document.addEventListener("keydown", function (event) {
+      if (!state.aberto) return;
+      if (event.key === "Escape" || event.key === "Enter") {
+        event.preventDefault();
+        closeAlert();
+      }
+    });
+    return true;
+  }
+
+  function openNext() {
+    if (state.aberto || queue.length === 0) return;
+    if (!ensureElements()) return;
+
+    const payload = queue.shift();
+    state.msgEl.textContent = payload.message;
+    state.overlay.classList.add("is-open");
+    state.aberto = true;
+
+    requestAnimationFrame(function () {
+      if (state.okBtn) state.okBtn.focus();
+    });
+  }
+
+  function closeAlert() {
+    if (!state.aberto || !state.overlay) return;
+    state.overlay.classList.remove("is-open");
+    state.aberto = false;
+    openNext();
+  }
+
+  function showCustomAlert(value) {
+    const message = toMessage(value);
+    if (!document.body) {
+      if (nativeAlert) nativeAlert(message);
+      return;
+    }
+    queue.push({ message });
+    openNext();
+  }
+
+  window.showCustomAlert = showCustomAlert;
+  window.alert = function alertOverride(message) {
+    showCustomAlert(message);
+  };
+})();
