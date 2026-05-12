@@ -274,8 +274,8 @@
       const energiaNivel = (state.nivel / MAX_NIVEL) * 34;
       state.waveBars.forEach((bar, index) => {
         const oscilacao = ((Math.sin(Date.now() / 420 + index * 0.55) + 1) / 2) * 35;
-        const ruído = Math.random() * 8;
-        const altura = clamp(14 + oscilacao + energiaTemp + energiaNivel + ruído, 14, 100);
+        const ruido = Math.random() * 8;
+        const altura = clamp(14 + oscilacao + energiaTemp + energiaNivel + ruido, 14, 100);
         bar.style.setProperty("--h", `${altura}%`);
         bar.style.animationDuration = `${0.72 + Math.random() * 1.2}s`;
       });
