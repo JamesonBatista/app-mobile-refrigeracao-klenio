@@ -1,190 +1,129 @@
 // js/screens/TelaInicial.js
 
 (function () {
-  const TEAM_BG = "https://upload.wikimedia.org/wikipedia/en/0/0d/Avengers_Endgame_poster.jpg";
   const HEROES = [
     {
-      name: "IRON MAN",
-      identity: "Tony Stark",
-      role: "Tactical Engineer",
-      quote: "Sometimes you gotta run before you can walk.",
+      id: "iron-man",
+      nome: "IRON MAN",
+      ator: "Tony Stark",
+      papel: "Tactical Engineer",
+      frase: "Sometimes you gotta run before you can walk.",
       poster: "https://upload.wikimedia.org/wikipedia/en/7/70/Ironmanposter.JPG",
-      accent: "#ff5b47",
-      mission: "Deploy airborne strike pattern and precision systems.",
+      cor: "#ff5f4d",
+      missao: "Precision strike and airborne control.",
     },
     {
-      name: "CAPTAIN AMERICA",
-      identity: "Steve Rogers",
-      role: "Field Commander",
-      quote: "I can do this all day.",
+      id: "captain-america",
+      nome: "CAPTAIN AMERICA",
+      ator: "Steve Rogers",
+      papel: "Field Commander",
+      frase: "I can do this all day.",
       poster: "https://upload.wikimedia.org/wikipedia/en/3/37/Captain_America_The_First_Avenger_poster.jpg",
-      accent: "#4aa3ff",
-      mission: "Stabilize frontline and coordinate unit formation.",
+      cor: "#4f9dff",
+      missao: "Frontline coordination and defense line control.",
     },
     {
-      name: "THOR",
-      identity: "Odinson",
-      role: "Heavy Assault",
-      quote: "Bring me Thanos!",
+      id: "thor",
+      nome: "THOR",
+      ator: "Odinson",
+      papel: "Heavy Assault",
+      frase: "Bring me Thanos!",
       poster: "https://upload.wikimedia.org/wikipedia/en/7/7d/Thor_Ragnarok_poster.jpg",
-      accent: "#55e7cf",
-      mission: "Charge core output and break enemy shield layers.",
+      cor: "#67e7c7",
+      missao: "High-impact engagement and shield disruption.",
     },
     {
-      name: "HULK",
-      identity: "Bruce Banner",
-      role: "Ground Impact",
-      quote: "Thats my secret. I am always angry.",
-      poster: "https://upload.wikimedia.org/wikipedia/en/3/39/The_Incredible_Hulk_poster.jpg",
-      accent: "#86e65c",
-      mission: "Neutralize high-density threats at close range.",
-    },
-    {
-      name: "BLACK WIDOW",
-      identity: "Natasha Romanoff",
-      role: "Covert Operations",
-      quote: "At some point we all have to choose.",
+      id: "black-widow",
+      nome: "BLACK WIDOW",
+      ator: "Natasha Romanoff",
+      papel: "Covert Ops",
+      frase: "At some point we all have to choose.",
       poster: "https://upload.wikimedia.org/wikipedia/en/e/e8/Black_Widow_%282021_film%29_poster.jpg",
-      accent: "#ff8abd",
-      mission: "Execute silent entry and recover encrypted intel.",
+      cor: "#ff7daf",
+      missao: "Silent infiltration and intelligence recovery.",
     },
   ];
 
-  const THREAT_LEVELS = ["ALPHA", "BETA", "OMEGA", "SIGMA", "ECLIPSE"];
-
-  function clamp(value, min, max) {
-    return Math.max(min, Math.min(max, value));
-  }
-
   function renderTelaInicial(root, props) {
     const state = {
-      active: 0,
-      feed: [],
+      heroIndex: 0,
       particles: [],
       rafId: null,
-      cleaners: [],
       destroyed: false,
+      cleanupFns: [],
     };
 
     root.innerHTML = `
-      <section class="avx-root" id="avx-root">
-        <canvas class="avx-stars" id="avx-stars"></canvas>
-        <div class="avx-overlay"></div>
+      <section class="av-root" id="av-root">
+        <canvas class="av-stars" id="av-stars"></canvas>
+        <div class="av-overlay"></div>
 
-        <div class="avx-shell" id="avx-shell">
-          <header class="avx-header">
+        <div class="av-content" id="av-content">
+          <header class="av-header">
             <div>
-              <p class="avx-eyebrow">AVENGERS INITIATIVE</p>
-              <h1 class="avx-title">MISSION CONSOLE</h1>
+              <p class="av-eyebrow">AVENGERS INITIATIVE</p>
+              <h1 class="av-title">MISSION HUB</h1>
             </div>
-            <button class="avx-random" id="avx-random" type="button">Shuffle Hero</button>
+            <button class="av-switch-btn" id="av-switch-btn" type="button">Switch Hero</button>
           </header>
 
-          <section class="avx-hero-strip" id="avx-hero-strip">
+          <nav class="av-hero-tabs" id="av-hero-tabs">
             ${HEROES.map((hero, index) => `
-              <button class="avx-hero-btn${index === 0 ? " is-active" : ""}" data-hero="${index}" type="button">
-                <span class="avx-hero-thumb" style="background-image:url('${hero.poster}')"></span>
-                <span class="avx-hero-name">${hero.name}</span>
-              </button>
+              <button class="av-hero-tab${index === 0 ? " is-active" : ""}" data-hero-index="${index}" type="button">${hero.nome}</button>
             `).join("")}
-          </section>
+          </nav>
 
-          <section class="avx-main">
-            <article class="avx-poster-card">
-              <div class="avx-poster" id="avx-poster"></div>
-              <div class="avx-poster-info">
-                <p class="avx-hero-role" id="avx-role"></p>
-                <p class="avx-hero-identity" id="avx-identity"></p>
-              </div>
-            </article>
+          <main class="av-main-card">
+            <div class="av-poster" id="av-poster"></div>
+            <div class="av-info">
+              <h2 class="av-hero-name" id="av-hero-name"></h2>
+              <p class="av-hero-meta" id="av-hero-meta"></p>
+              <p class="av-hero-mission" id="av-hero-mission"></p>
+              <p class="av-hero-quote" id="av-hero-quote"></p>
+            </div>
+          </main>
 
-            <article class="avx-intel-card">
-              <div class="avx-intel-line">
-                <span>Threat Level</span>
-                <strong id="avx-threat"></strong>
-              </div>
-              <div class="avx-intel-line">
-                <span>Mission Focus</span>
-                <strong id="avx-mission"></strong>
-              </div>
-              <p class="avx-quote" id="avx-quote"></p>
-            </article>
-          </section>
-
-          <section class="avx-feed-card">
-            <p class="avx-feed-title">Live Tactical Feed</p>
-            <div class="avx-feed" id="avx-feed"></div>
-          </section>
-
-          <div class="avx-actions">
-            <button class="avx-btn main" id="avx-enter" type="button">Enter as Recruit</button>
-            <button class="avx-btn ghost" id="avx-signup" type="button">Create New Profile</button>
-            <button class="avx-admin" id="avx-admin" type="button">Admin Access -></button>
+          <div class="av-actions">
+            <button class="av-btn main" id="av-enter" type="button">Entrar</button>
+            <button class="av-btn ghost" id="av-signup" type="button">Criar conta</button>
+            <button class="av-admin" id="av-admin" type="button">Acesso administrativo -></button>
           </div>
         </div>
       </section>
     `;
 
-    const rootEl = root.querySelector("#avx-root");
-    const shellEl = root.querySelector("#avx-shell");
-    const starsCanvas = root.querySelector("#avx-stars");
-    const posterEl = root.querySelector("#avx-poster");
-    const roleEl = root.querySelector("#avx-role");
-    const identityEl = root.querySelector("#avx-identity");
-    const threatEl = root.querySelector("#avx-threat");
-    const missionEl = root.querySelector("#avx-mission");
-    const quoteEl = root.querySelector("#avx-quote");
-    const feedEl = root.querySelector("#avx-feed");
-    const heroStripEl = root.querySelector("#avx-hero-strip");
+    const rootEl = root.querySelector("#av-root");
+    const contentEl = root.querySelector("#av-content");
+    const starsCanvas = root.querySelector("#av-stars");
+    const posterEl = root.querySelector("#av-poster");
+    const heroNameEl = root.querySelector("#av-hero-name");
+    const heroMetaEl = root.querySelector("#av-hero-meta");
+    const heroMissionEl = root.querySelector("#av-hero-mission");
+    const heroQuoteEl = root.querySelector("#av-hero-quote");
+    const tabsEl = root.querySelector("#av-hero-tabs");
 
-    function pushFeed(message) {
-      const time = new Date().toLocaleTimeString("pt-BR", { hour: "2-digit", minute: "2-digit" });
-      state.feed.unshift(`[${time}] ${message}`);
-      state.feed = state.feed.slice(0, 6);
-      feedEl.innerHTML = state.feed.map((item) => `<p>${item}</p>`).join("");
+    function heroAtual() {
+      return HEROES[state.heroIndex];
     }
 
-    function currentHero() {
-      return HEROES[state.active];
-    }
-
-    function randomThreat() {
-      const offset = Math.floor(Math.random() * THREAT_LEVELS.length);
-      return THREAT_LEVELS[(state.active + offset) % THREAT_LEVELS.length];
-    }
-
-    function updateHero(trigger) {
-      const hero = currentHero();
-      rootEl.style.setProperty("--avx-accent", hero.accent);
-      rootEl.style.setProperty("--avx-accent-soft", `${hero.accent}44`);
+    function atualizarHero() {
+      const hero = heroAtual();
+      rootEl.style.setProperty("--av-accent", hero.cor);
+      rootEl.style.setProperty("--av-accent-soft", `${hero.cor}44`);
       posterEl.style.backgroundImage = `url('${hero.poster}')`;
-      roleEl.textContent = hero.name;
-      identityEl.textContent = `${hero.identity} • ${hero.role}`;
-      missionEl.textContent = hero.mission;
-      threatEl.textContent = randomThreat();
-      quoteEl.textContent = `"${hero.quote}"`;
+      heroNameEl.textContent = hero.nome;
+      heroMetaEl.textContent = `${hero.ator} • ${hero.papel}`;
+      heroMissionEl.textContent = hero.missao;
+      heroQuoteEl.textContent = `"${hero.frase}"`;
 
-      heroStripEl.querySelectorAll(".avx-hero-btn").forEach((btn, idx) => {
-        btn.classList.toggle("is-active", idx === state.active);
+      tabsEl.querySelectorAll(".av-hero-tab").forEach((btn, idx) => {
+        btn.classList.toggle("is-active", idx === state.heroIndex);
       });
-
-      if (trigger) {
-        pushFeed(`${hero.name} linked :: ${trigger}`);
-      }
     }
 
-    function pulseShell() {
-      shellEl.classList.remove("is-pulse");
-      void shellEl.offsetWidth;
-      shellEl.classList.add("is-pulse");
-      window.setTimeout(() => shellEl.classList.remove("is-pulse"), 540);
-    }
-
-    function randomHero() {
-      const next = Math.floor(Math.random() * HEROES.length);
-      state.active = next;
-      updateHero("randomized assignment");
-      pulseShell();
+    function proximoHero() {
+      state.heroIndex = (state.heroIndex + 1) % HEROES.length;
+      atualizarHero();
     }
 
     function setupStars() {
@@ -201,12 +140,12 @@
         starsCanvas.style.height = `${height}px`;
         ctx.setTransform(ratio, 0, 0, ratio, 0, 0);
 
-        state.particles = Array.from({ length: 150 }, () => ({
+        state.particles = Array.from({ length: 120 }, () => ({
           x: Math.random() * width,
           y: Math.random() * height,
-          r: Math.random() * 1.8 + 0.3,
-          v: Math.random() * 0.75 + 0.15,
-          d: (Math.random() - 0.5) * 0.48,
+          size: Math.random() * 1.7 + 0.4,
+          velocity: Math.random() * 0.65 + 0.15,
+          drift: (Math.random() - 0.5) * 0.4,
           t: Math.random() * Math.PI * 2,
         }));
       }
@@ -215,114 +154,102 @@
         if (state.destroyed) return;
         const width = starsCanvas.clientWidth;
         const height = starsCanvas.clientHeight;
-        const hero = currentHero();
-        ctx.clearRect(0, 0, width, height);
+        const hero = heroAtual();
 
+        ctx.clearRect(0, 0, width, height);
         for (let i = 0; i < state.particles.length; i += 1) {
           const p = state.particles[i];
-          p.y += p.v;
-          p.x += p.d;
+          p.y += p.velocity;
+          p.x += p.drift;
           p.t += 0.03;
-          if (p.y > height + 3) {
-            p.y = -3;
+
+          if (p.y > height + 2) {
+            p.y = -2;
             p.x = Math.random() * width;
           }
           if (p.x > width + 2) p.x = -2;
           if (p.x < -2) p.x = width + 2;
 
-          const alpha = 0.2 + ((Math.sin(p.t) + 1) / 2) * 0.64;
+          const alpha = 0.2 + ((Math.sin(p.t) + 1) / 2) * 0.65;
           ctx.beginPath();
-          ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
-          ctx.fillStyle = `${hero.accent}${Math.floor(alpha * 255).toString(16).padStart(2, "0")}`;
+          ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+          ctx.fillStyle = `${hero.cor}${Math.floor(alpha * 255).toString(16).padStart(2, "0")}`;
           ctx.fill();
         }
-
         state.rafId = window.requestAnimationFrame(frame);
       }
 
       resize();
       frame();
       window.addEventListener("resize", resize);
-      state.cleaners.push(() => window.removeEventListener("resize", resize));
+      state.cleanupFns.push(() => window.removeEventListener("resize", resize));
     }
 
-    function onPointer(clientX, clientY) {
-      const width = window.innerWidth || 390;
-      const height = window.innerHeight || 844;
-      const x = ((clientX / width) - 0.5) * 2;
-      const y = ((clientY / height) - 0.5) * 2;
-      rootEl.style.setProperty("--mx", clamp(x, -1, 1).toFixed(3));
-      rootEl.style.setProperty("--my", clamp(y, -1, 1).toFixed(3));
+    function pointerParallax(clientX, clientY) {
+      const w = window.innerWidth || 390;
+      const h = window.innerHeight || 844;
+      const x = ((clientX / w) - 0.5) * 2;
+      const y = ((clientY / h) - 0.5) * 2;
+      contentEl.style.transform = `translate3d(${(x * 6).toFixed(2)}px, ${(y * 7).toFixed(2)}px, 0)`;
     }
 
-    function bind() {
-      heroStripEl.querySelectorAll(".avx-hero-btn").forEach((btn) => {
-        btn.addEventListener("click", () => {
-          state.active = Number(btn.dataset.hero);
-          updateHero("manual selection");
-          pulseShell();
-        });
+    root.querySelector("#av-switch-btn").addEventListener("click", proximoHero);
+    tabsEl.querySelectorAll(".av-hero-tab").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        state.heroIndex = Number(btn.dataset.heroIndex);
+        atualizarHero();
       });
+    });
 
-      root.querySelector("#avx-random").addEventListener("click", randomHero);
-      root.querySelector("#avx-enter").addEventListener("click", () => {
-        if (props && typeof props.setTela === "function") props.setTela("loginCliente");
-      });
-      root.querySelector("#avx-signup").addEventListener("click", () => {
-        if (props && typeof props.setTela === "function") props.setTela("cadastro");
-      });
-      root.querySelector("#avx-admin").addEventListener("click", () => {
-        if (props && typeof props.setTela === "function") props.setTela("loginAdmin");
-      });
+    root.querySelector("#av-enter").addEventListener("click", () => {
+      if (props && typeof props.setTela === "function") props.setTela("loginCliente");
+    });
+    root.querySelector("#av-signup").addEventListener("click", () => {
+      if (props && typeof props.setTela === "function") props.setTela("cadastro");
+    });
+    root.querySelector("#av-admin").addEventListener("click", () => {
+      if (props && typeof props.setTela === "function") props.setTela("loginAdmin");
+    });
 
-      rootEl.addEventListener("mousemove", (event) => onPointer(event.clientX, event.clientY));
-      rootEl.addEventListener(
-        "touchmove",
-        (event) => {
-          const touch = event.touches && event.touches[0];
-          if (!touch) return;
-          onPointer(touch.clientX, touch.clientY);
-        },
-        { passive: true }
-      );
-      rootEl.addEventListener("mouseleave", () => {
-        rootEl.style.setProperty("--mx", "0");
-        rootEl.style.setProperty("--my", "0");
-      });
+    rootEl.addEventListener("mousemove", (event) => {
+      pointerParallax(event.clientX, event.clientY);
+    });
+    rootEl.addEventListener(
+      "touchmove",
+      (event) => {
+        const touch = event.touches && event.touches[0];
+        if (!touch) return;
+        pointerParallax(touch.clientX, touch.clientY);
+      },
+      { passive: true }
+    );
+    rootEl.addEventListener("mouseleave", () => {
+      contentEl.style.transform = "translate3d(0,0,0)";
+    });
 
-      function onKey(event) {
-        if (event.key === "ArrowRight") {
-          state.active = (state.active + 1) % HEROES.length;
-          updateHero("keyboard next");
-        }
-        if (event.key === "ArrowLeft") {
-          state.active = (state.active - 1 + HEROES.length) % HEROES.length;
-          updateHero("keyboard prev");
-        }
-        if (event.key === "Enter") {
-          if (props && typeof props.setTela === "function") props.setTela("loginCliente");
-        }
+    function onKey(event) {
+      if (event.key === "ArrowRight") proximoHero();
+      if (event.key === "ArrowLeft") {
+        state.heroIndex = (state.heroIndex - 1 + HEROES.length) % HEROES.length;
+        atualizarHero();
       }
-
-      window.addEventListener("keydown", onKey);
-      state.cleaners.push(() => window.removeEventListener("keydown", onKey));
+      if (event.key === "Enter") {
+        if (props && typeof props.setTela === "function") props.setTela("loginCliente");
+      }
     }
+
+    window.addEventListener("keydown", onKey);
+    state.cleanupFns.push(() => window.removeEventListener("keydown", onKey));
 
     setupStars();
-    bind();
-    updateHero("boot sequence complete");
-
-    const feedTimer = window.setInterval(() => {
-      pushFeed(`${currentHero().name} mission packet refreshed`);
-    }, 3500);
-    state.cleaners.push(() => window.clearInterval(feedTimer));
+    atualizarHero();
 
     return function cleanupTelaInicial() {
       state.destroyed = true;
       if (state.rafId) window.cancelAnimationFrame(state.rafId);
-      state.cleaners.forEach((clean) => {
+      state.cleanupFns.forEach((fn) => {
         try {
-          clean();
+          fn();
         } catch (error) {}
       });
     };
