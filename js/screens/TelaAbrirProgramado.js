@@ -119,6 +119,14 @@
     return null;
   }
 
+  function showAlert(message) {
+    if (typeof window.showCustomAlert === "function") {
+      window.showCustomAlert(message);
+      return;
+    }
+    window.alert(message);
+  }
+
   function calcularDiasRestantes(dataChave) {
     if (!dataChave) return null;
     const hoje = new Date();
@@ -305,13 +313,13 @@
 
     function validarCamposComuns() {
       if (!state.clienteSelecionado) {
-        window.alert("Atenção ❄\nSelecione um cliente.");
+        showAlert("Atenção ❄\nSelecione um cliente.");
         return null;
       }
       const todos = [...state.tiposSelecionados];
       if (state.mostrarOutro && state.outroTipo.trim()) todos.push(state.outroTipo.trim());
       if (todos.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de problema.");
+        showAlert("Atenção ❄\nSelecione ao menos um tipo de problema.");
         return null;
       }
       return todos;
@@ -321,18 +329,18 @@
       const todos = validarCamposComuns();
       if (!todos) return;
       if (!state.horaInicio || !state.horaFim) {
-        window.alert("Atenção ❄\nSelecione a hora de início e a hora de fim.");
+        showAlert("Atenção ❄\nSelecione a hora de início e a hora de fim.");
         return;
       }
       if (!horaFimValida(state.horaInicio, state.horaFim)) {
-        window.alert("Atenção ❄\nA hora de fim deve ser posterior à hora de início.");
+        showAlert("Atenção ❄\nA hora de fim deve ser posterior à hora de início.");
         return;
       }
 
       const chave = formatarDataChavePeriodo(state.diaPeriodo, state.mesPeriodo, state.anoPeriodo);
       const diasRestantes = calcularDiasRestantes(chave);
       if (diasRestantes < 0) {
-        window.alert("Atenção ❄\nSelecione uma data futura.");
+        showAlert("Atenção ❄\nSelecione uma data futura.");
         return;
       }
 
@@ -407,7 +415,7 @@
       const todos = validarCamposComuns();
       if (!todos) return;
       if (!state.diaSelecionado || !state.horario) {
-        window.alert("Atenção ❄\nSelecione o dia e horário.");
+        showAlert("Atenção ❄\nSelecione o dia e horário.");
         return;
       }
 
@@ -595,15 +603,15 @@
             formatarDataChavePeriodo(state.diaPeriodo, state.mesPeriodo, state.anoPeriodo)
           );
           if (diasRestantes < 0) {
-            window.alert("Atenção ❄\nSelecione uma data futura.");
+            showAlert("Atenção ❄\nSelecione uma data futura.");
             return;
           }
           if (!state.horaInicio || !state.horaFim) {
-            window.alert("Atenção ❄\nSelecione hora de início e fim.");
+            showAlert("Atenção ❄\nSelecione hora de início e fim.");
             return;
           }
           if (!horaFimValida(state.horaInicio, state.horaFim)) {
-            window.alert("Atenção ❄\nA hora de fim deve ser posterior à hora de início.");
+            showAlert("Atenção ❄\nA hora de fim deve ser posterior à hora de início.");
             return;
           }
           state.mostrarSeletorPeriodo = false;
