@@ -200,6 +200,13 @@
     }
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function renderTelaChamadoDetalhes(root, props) {
     const selecionado = props && props.chamadoSelecionado ? props.chamadoSelecionado : null;
     const state = {
@@ -299,7 +306,7 @@
         `Seu chamado ${state.chamado.numero} foi reagendado para ${novaData} às ${state.horario}.`
       );
 
-      const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar WhatsApp sobre o reagendamento?");
+      const ok = await showConfirm("📲 Notificar cliente?\nDeseja enviar WhatsApp sobre o reagendamento?");
       if (ok) {
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +
@@ -327,7 +334,7 @@
         "✅ Chamado aceito!",
         `Seu chamado ${state.chamado.numero} foi aceito pelo suporte.`
       );
-      const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar WhatsApp?");
+      const ok = await showConfirm("📲 Notificar cliente?\nDeseja enviar WhatsApp?");
       if (ok) {
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +
@@ -379,7 +386,7 @@
         `O técnico ${tecnicoNome} iniciou o atendimento do chamado ${state.chamado.numero} às ${hora}.`
       );
 
-      const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar WhatsApp?");
+      const ok = await showConfirm("📲 Notificar cliente?\nDeseja enviar WhatsApp?");
       if (ok) {
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +
@@ -450,7 +457,7 @@
         `Seu chamado ${state.chamado.numero} foi concluído. Valor: R$ ${state.valorCobrado.trim()}.`
       );
 
-      const ok = window.confirm("📲 Notificar cliente?\nDeseja enviar resumo no WhatsApp?");
+      const ok = await showConfirm("📲 Notificar cliente?\nDeseja enviar resumo no WhatsApp?");
       if (ok) {
         const isPix = state.formaPagamento === "Pix";
         const inicioAtendimento = state.chamado.timestamp_Em_atendimento
@@ -500,7 +507,7 @@
     }
 
     async function handleCancelar() {
-      const ok = window.confirm("Tem certeza que deseja cancelar este chamado?");
+      const ok = await showConfirm("Tem certeza que deseja cancelar este chamado?");
       if (!ok) return;
       state.salvando = true;
       render();
@@ -516,7 +523,7 @@
         "❌ Chamado cancelado",
         `Seu chamado ${state.chamado.numero} foi cancelado pelo suporte.`
       );
-      const avisar = window.confirm("📲 Notificar cliente?\nDeseja enviar WhatsApp sobre cancelamento?");
+      const avisar = await showConfirm("📲 Notificar cliente?\nDeseja enviar WhatsApp sobre cancelamento?");
       if (avisar) {
         const mensagem =
           `Olá, ${state.chamado.cliente}! 👋\n\n` +

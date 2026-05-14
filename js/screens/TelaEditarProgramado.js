@@ -215,8 +215,15 @@
     }
   }
 
-  function perguntarWA(programado, mensagem, onDepois) {
-    const ok = window.confirm("📲 Notificar via WhatsApp?\nDeseja enviar mensagem para o cliente?");
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
+  async function perguntarWA(programado, mensagem, onDepois) {
+    const ok = await showConfirm("📲 Notificar via WhatsApp?\nDeseja enviar mensagem para o cliente?");
     if (ok) notificarWA(programado, mensagem);
     if (typeof onDepois === "function") onDepois();
   }
@@ -349,7 +356,7 @@
         `━━━━━━━━━━━━━━━━━━\n\n` +
         `Acesse o app para confirmar ou contestar.\n\nKlenio Refrigeração ❄`;
 
-      perguntarWA(state.programado, msg);
+      await perguntarWA(state.programado, msg);
     }
 
     async function handleSalvarObservacao() {
@@ -420,7 +427,7 @@
         `🔄 Novo status: Em atendimento (Técnico está a caminho)\n\n` +
         `Klenio Refrigeração ❄`;
 
-      perguntarWA(state.programado, msg);
+      await perguntarWA(state.programado, msg);
     }
 
     async function handleConfirmarConclusao() {
@@ -504,13 +511,13 @@
         `🙏 *Obrigado pela preferência!*\n` +
         `Klenio Refrigeração`;
 
-      perguntarWA(state.programado, msg, function () {
+      await perguntarWA(state.programado, msg, function () {
         if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
       });
     }
 
     async function handleCancelar() {
-      const ok = window.confirm("Tem certeza que deseja cancelar?");
+      const ok = await showConfirm("Tem certeza que deseja cancelar?");
       if (!ok) return;
       state.salvando = true;
       render();
@@ -537,13 +544,13 @@
         `🕐 Horário: ${state.programado.horario}\n\n` +
         `Em caso de dúvidas entre em contato.\n\nKlenio Refrigeração ❄`;
 
-      perguntarWA(state.programado, msg, function () {
+      await perguntarWA(state.programado, msg, function () {
         if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
       });
     }
 
     async function handleExcluir() {
-      const ok = window.confirm("Deseja excluir permanentemente?");
+      const ok = await showConfirm("Deseja excluir permanentemente?");
       if (!ok) return;
       state.salvando = true;
       render();

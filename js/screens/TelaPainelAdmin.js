@@ -181,6 +181,13 @@
     }
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function badgeHtml(count) {
     if (!count || count === 0) return "";
     return `<span class="pa-badge">${count > 99 ? "99+" : count}</span>`;
@@ -418,7 +425,7 @@
       );
       if (!chamado) return;
       const novaUrgencia = chamado.urgencia === "Urgente" ? "Normal" : "Urgente";
-      const ok = window.confirm(`Deseja marcar o chamado ${numero} como ${novaUrgencia}?`);
+      const ok = await showConfirm(`Deseja marcar o chamado ${numero} como ${novaUrgencia}?`);
       if (!ok) return;
       await atualizarChamadoSafe(numero, { urgencia: novaUrgencia });
       await atualizarDadosPainel(false);
@@ -427,7 +434,7 @@
     async function handleExcluirChamado(numero) {
       const chamado = state.chamadosConcluidos.find((item) => item.numero === numero);
       if (!chamado) return;
-      const ok = window.confirm(
+      const ok = await showConfirm(
         `Tem certeza que deseja excluir o chamado ${numero}?\n\nOs dados financeiros serão mantidos no relatório.`
       );
       if (!ok) return;
@@ -460,7 +467,7 @@
       await atualizarDadosPainel(false);
       render();
 
-      const avisarWhats = window.confirm("📲 Notificar cliente?\nDeseja enviar a resposta via WhatsApp?");
+      const avisarWhats = await showConfirm("📲 Notificar cliente?\nDeseja enviar a resposta via WhatsApp?");
       if (avisarWhats) notificarWhatsAppResposta(item, respostaTexto);
     }
 

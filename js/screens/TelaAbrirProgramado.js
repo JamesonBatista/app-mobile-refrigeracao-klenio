@@ -127,6 +127,13 @@
     window.alert(message);
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function calcularDiasRestantes(dataChave) {
     if (!dataChave) return null;
     const hoje = new Date();
@@ -399,7 +406,9 @@
       state.mostrarSeletorPeriodo = false;
       render();
 
-      const enviar = window.confirm(`Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
+      const enviar = await showConfirm(
+        `Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`
+      );
       if (enviar) {
         const num = normalizarTelefone(state.clienteSelecionado.telefone);
         if (num && typeof window.abrirLinkWhatsApp === "function") {
@@ -469,7 +478,9 @@
       state.carregando = false;
       render();
 
-      const enviar = window.confirm(`Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
+      const enviar = await showConfirm(
+        `Programado criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`
+      );
       if (enviar) {
         const num = normalizarTelefone(state.clienteSelecionado.telefone);
         if (num && typeof window.abrirLinkWhatsApp === "function") {

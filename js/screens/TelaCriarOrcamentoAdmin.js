@@ -192,6 +192,13 @@
     }
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function renderTelaCriarOrcamentoAdmin(root, props) {
     const state = {
       clientes: [],
@@ -325,7 +332,9 @@
       state.carregando = false;
       render();
 
-      const enviar = window.confirm(`Orçamento criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
+      const enviar = await showConfirm(
+        `Orçamento criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`
+      );
       if (enviar) notificarWhatsappOrcamento(state.clienteSelecionado.telefone, orcamento);
       if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
     }
