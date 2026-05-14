@@ -1015,7 +1015,7 @@
             >
               ${
                 state.carregando
-                  ? '<span class="op-spinner"></span>'
+                  ? '<span class="ch-btn-inline-loading"><span class="op-spinner"></span><span>Criando programado...</span></span>'
                   : state.modoPeriodo
                     ? faixaPreview
                       ? "📆 Criar Programado por Período"

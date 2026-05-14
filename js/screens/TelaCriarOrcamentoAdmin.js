@@ -666,7 +666,11 @@
             </article>
 
             <button class="op-btn primary" style="margin-top:20px;background:#8e44ad" data-action="criar" type="button" ${state.carregando ? "disabled" : ""}>
-              ${state.carregando ? '<span class="op-spinner"></span>' : "💰 Enviar Orçamento ao Cliente"}
+              ${
+                state.carregando
+                  ? '<span class="ch-btn-inline-loading"><span class="op-spinner"></span><span>Enviando orçamento...</span></span>'
+                  : "💰 Enviar Orçamento ao Cliente"
+              }
             </button>
 
             <div style="height:20px"></div>
