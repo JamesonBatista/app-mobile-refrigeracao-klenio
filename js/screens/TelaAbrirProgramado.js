@@ -120,18 +120,11 @@
   }
 
   function showAlert(message) {
-    if (typeof window.showCustomAlert === "function") {
-      window.showCustomAlert(message);
-      return;
-    }
-    window.alert(message);
+    window.showAppAlert(message);
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function calcularDiasRestantes(dataChave) {

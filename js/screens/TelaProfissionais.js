@@ -88,10 +88,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function renderTelaProfissionais(root, props) {
@@ -117,7 +114,7 @@
 
     async function handleSalvar() {
       if (!state.nome.trim()) {
-        window.alert("Atenção ❄\nInforme o nome do profissional.");
+        window.showAppAlert("Atenção ❄\nInforme o nome do profissional.");
         return;
       }
 
@@ -130,7 +127,7 @@
           especialidade: state.especialidade.trim(),
           telefone: state.telefone.trim(),
         });
-        window.alert("Sucesso! ❄\nProfissional atualizado com sucesso.");
+        window.showAppAlert("Sucesso! ❄\nProfissional atualizado com sucesso.");
       } else {
         const novoProfissional = {
           id: `prof_${Date.now()}`,
@@ -140,7 +137,7 @@
           dataCadastro: new Date().toLocaleDateString("pt-BR"),
         };
         await salvarProfissionalSafe(novoProfissional);
-        window.alert("Sucesso! ❄\nProfissional cadastrado com sucesso.");
+        window.showAppAlert("Sucesso! ❄\nProfissional cadastrado com sucesso.");
       }
 
       state.salvando = false;
@@ -165,7 +162,7 @@
       const ok = await showConfirm(`Tem certeza que deseja excluir ${profissional.nome}?`);
       if (!ok) return;
       await excluirProfissionalSafe(id);
-      window.alert("Excluído!\nProfissional removido com sucesso.");
+      window.showAppAlert("Excluído!\nProfissional removido com sucesso.");
     }
 
     function bindEvents() {

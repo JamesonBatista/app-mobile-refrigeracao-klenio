@@ -72,7 +72,7 @@
 
     async function handleSalvarDados() {
       if (!state.nome.trim() || !state.endereco.trim() || !state.telefone.trim()) {
-        window.alert("Atenção ❄\nPreencha todos os campos obrigatórios.");
+        window.showAppAlert("Atenção ❄\nPreencha todos os campos obrigatórios.");
         return;
       }
 
@@ -108,7 +108,7 @@
         props.setUsuarioLogado(usuarioAtualizado);
       }
 
-      window.alert("Sucesso! ❄\nSeus dados foram atualizados.");
+      window.showAppAlert("Sucesso! ❄\nSeus dados foram atualizados.");
     }
 
     async function buscarSenhaAtualSistema() {
@@ -143,21 +143,21 @@
 
     async function handleSalvarSenha() {
       if (!state.senhaAtual.trim() || !state.novaSenha.trim() || !state.confirmarSenha.trim()) {
-        window.alert("Atenção ❄\nPreencha todos os campos de senha.");
+        window.showAppAlert("Atenção ❄\nPreencha todos os campos de senha.");
         return;
       }
 
       const senhaSistema = await buscarSenhaAtualSistema();
       if (!senhaSistema || state.senhaAtual !== senhaSistema) {
-        window.alert("Erro ❄\nA senha atual está incorreta.");
+        window.showAppAlert("Erro ❄\nA senha atual está incorreta.");
         return;
       }
       if (state.novaSenha.length < 6) {
-        window.alert("Atenção ❄\nA nova senha precisa ter pelo menos 6 caracteres.");
+        window.showAppAlert("Atenção ❄\nA nova senha precisa ter pelo menos 6 caracteres.");
         return;
       }
       if (state.novaSenha !== state.confirmarSenha) {
-        window.alert("Erro ❄\nAs senhas não conferem.");
+        window.showAppAlert("Erro ❄\nAs senhas não conferem.");
         return;
       }
 
@@ -181,7 +181,7 @@
         props.setUsuarioLogado(usuarioAtualizado);
       }
 
-      window.alert("Sucesso! ❄\nSenha alterada com sucesso.");
+      window.showAppAlert("Sucesso! ❄\nSenha alterada com sucesso.");
     }
 
     function bindEvents() {

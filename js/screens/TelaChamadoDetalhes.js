@@ -201,10 +201,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function renderTelaChamadoDetalhes(root, props) {
@@ -283,7 +280,7 @@
 
     async function handleSalvarReagendamento() {
       if (!state.diaSelecionado || !state.horario) {
-        window.alert("Atenção ❄\nSelecione o novo dia e horário.");
+        window.showAppAlert("Atenção ❄\nSelecione o novo dia e horário.");
         return;
       }
       state.salvando = true;
@@ -352,7 +349,7 @@
       if (!tecnico) {
         state.mostrarSelecaoTecnico = true;
         render();
-        window.alert("Atenção ❄\nSelecione o técnico responsável antes de iniciar.");
+        window.showAppAlert("Atenção ❄\nSelecione o técnico responsável antes de iniciar.");
         return;
       }
 
@@ -405,11 +402,11 @@
 
     async function handleConfirmarConclusao() {
       if (!state.formaPagamento) {
-        window.alert("Atenção ❄\nSelecione a forma de pagamento.");
+        window.showAppAlert("Atenção ❄\nSelecione a forma de pagamento.");
         return;
       }
       if (!state.valorCobrado.trim()) {
-        window.alert("Atenção ❄\nInforme o valor cobrado.");
+        window.showAppAlert("Atenção ❄\nInforme o valor cobrado.");
         return;
       }
 
@@ -503,7 +500,7 @@
       state.chamado = { ...state.chamado, observacaoTecnica: state.observacao };
       state.salvando = false;
       render();
-      window.alert("Salvo!\nObservação técnica salva com sucesso.");
+      window.showAppAlert("Salvo!\nObservação técnica salva com sucesso.");
     }
 
     async function handleCancelar() {

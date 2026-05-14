@@ -216,10 +216,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   async function perguntarWA(programado, mensagem, onDepois) {
@@ -313,7 +310,7 @@
 
     async function handleSalvarEdicao() {
       if (!state.diaSelecionado || !state.horario) {
-        window.alert("Atenção ❄\nSelecione o novo dia e horário.");
+        window.showAppAlert("Atenção ❄\nSelecione o novo dia e horário.");
         return;
       }
       state.salvando = true;
@@ -368,7 +365,7 @@
       state.programado = { ...state.programado, observacaoTecnica: state.observacao };
       state.salvando = false;
       render();
-      window.alert("Salvo! ❄\nObservação técnica salva com sucesso.");
+      window.showAppAlert("Salvo! ❄\nObservação técnica salva com sucesso.");
     }
 
     async function handleIniciarAtendimento() {
@@ -376,7 +373,7 @@
       if (!tecnico) {
         state.mostrarSelecaoTecnicoInicio = true;
         render();
-        window.alert("Atenção ❄\nSelecione o técnico responsável para iniciar o atendimento.");
+        window.showAppAlert("Atenção ❄\nSelecione o técnico responsável para iniciar o atendimento.");
         return;
       }
 
@@ -432,11 +429,11 @@
 
     async function handleConfirmarConclusao() {
       if (!state.formaPagamento) {
-        window.alert("Atenção ❄\nSelecione a forma de pagamento.");
+        window.showAppAlert("Atenção ❄\nSelecione a forma de pagamento.");
         return;
       }
       if (!state.valorCobrado.trim()) {
-        window.alert("Atenção ❄\nInforme o valor cobrado.");
+        window.showAppAlert("Atenção ❄\nInforme o valor cobrado.");
         return;
       }
 
@@ -557,7 +554,7 @@
       await excluirProgramadoSafe(state.programado.numero);
       state.salvando = false;
       render();
-      window.alert("Excluído!");
+      window.showAppAlert("Excluído!");
       if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
     }
 

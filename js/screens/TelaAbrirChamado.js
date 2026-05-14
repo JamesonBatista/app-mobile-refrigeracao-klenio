@@ -188,12 +188,13 @@
         state.fotos.push(...imagens);
         render();
       } catch (error) {
-        window.alert("Erro ❄\nNão foi possível processar uma das imagens.");
+        window.showAppAlert("Erro ❄\nNão foi possível processar uma das imagens.");
       }
     }
 
-    function removerFoto(index) {
-      if (!window.confirm("Deseja remover esta foto?")) return;
+    async function removerFoto(index) {
+      const ok = await window.showAppConfirm("Deseja remover esta foto?");
+      if (!ok) return;
       const foto = state.fotos[index];
       state.fotos = state.fotos.filter((_, i) => i !== index);
       if (state.fotoExpandida === foto?.uri) state.fotoExpandida = null;
@@ -207,15 +208,15 @@
       }
 
       if (todosTipos.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de problema.");
+        window.showAppAlert("Atenção ❄\nSelecione ao menos um tipo de problema.");
         return;
       }
       if (!state.endereco.trim()) {
-        window.alert("Atenção ❄\nInforme o endereço.");
+        window.showAppAlert("Atenção ❄\nInforme o endereço.");
         return;
       }
       if (!state.diaSelecionado || !state.horario) {
-        window.alert("Atenção ❄\nSelecione o dia e horário.");
+        window.showAppAlert("Atenção ❄\nSelecione o dia e horário.");
         return;
       }
 
@@ -262,12 +263,12 @@
         await salvarChamadoSafe(chamado);
         state.carregando = false;
         render();
-        window.alert('Chamado aberto! ❄\nSeu chamado foi enviado. Acompanhe em "Acompanhar Chamado".');
+        window.showAppAlert('Chamado aberto! ❄\nSeu chamado foi enviado. Acompanhe em "Acompanhar Chamado".');
         if (props && typeof props.setTela === "function") props.setTela("acompanharChamado");
       } catch (error) {
         state.carregando = false;
         render();
-        window.alert("Erro\nNão foi possível abrir o chamado.");
+        window.showAppAlert("Erro\nNão foi possível abrir o chamado.");
       }
     }
 

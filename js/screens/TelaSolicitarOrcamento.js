@@ -112,7 +112,7 @@
     function processarArquivos(files) {
       if (!files || files.length === 0) return;
       if (state.fotos.length >= 5) {
-        window.alert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
+        window.showAppAlert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
         return;
       }
       const restantes = 5 - state.fotos.length;
@@ -126,8 +126,8 @@
       render();
     }
 
-    function removerFoto(index) {
-      const ok = window.confirm("Deseja remover esta foto?");
+    async function removerFoto(index) {
+      const ok = await window.showAppConfirm("Deseja remover esta foto?");
       if (!ok) return;
       const foto = state.fotos[index];
       if (foto && urlsCriadas.has(foto)) {
@@ -141,19 +141,19 @@
 
     async function handleEnviar() {
       if (state.tiposServico.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de serviço.");
+        window.showAppAlert("Atenção ❄\nSelecione ao menos um tipo de serviço.");
         return;
       }
       if (state.tiposAparelho.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de aparelho.");
+        window.showAppAlert("Atenção ❄\nSelecione ao menos um tipo de aparelho.");
         return;
       }
       if (!state.btu) {
-        window.alert("Atenção ❄\nSelecione os BTUs.");
+        window.showAppAlert("Atenção ❄\nSelecione os BTUs.");
         return;
       }
       if (!state.endereco.trim()) {
-        window.alert("Atenção ❄\nInforme o endereço.");
+        window.showAppAlert("Atenção ❄\nInforme o endereço.");
         return;
       }
 
@@ -189,7 +189,7 @@
       await salvarOrcamentoSafe(orcamento);
       state.carregando = false;
       render();
-      window.alert("Orçamento solicitado! ❄\nEnviado com sucesso. Aguarde nossa análise.");
+      window.showAppAlert("Orçamento solicitado! ❄\nEnviado com sucesso. Aguarde nossa análise.");
       if (props && typeof props.setTela === "function") props.setTela("meusOrcamentos");
     }
 
@@ -232,7 +232,7 @@
         }
         if (action === "open-galeria") {
           if (state.fotos.length >= 5) {
-            window.alert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
+            window.showAppAlert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
             return;
           }
           const input = root.querySelector("#so-input-galeria");
@@ -241,7 +241,7 @@
         }
         if (action === "open-camera") {
           if (state.fotos.length >= 5) {
-            window.alert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
+            window.showAppAlert("Limite atingido ❄\nVocê pode adicionar no máximo 5 fotos.");
             return;
           }
           const input = root.querySelector("#so-input-camera");

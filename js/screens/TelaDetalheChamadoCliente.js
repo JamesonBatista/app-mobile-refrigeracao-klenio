@@ -88,7 +88,7 @@
       const cancelBtn = root.querySelector("#dc-cancelar");
       if (cancelBtn) {
         cancelBtn.addEventListener("click", async function () {
-          const ok = window.confirm("Tem certeza que deseja cancelar este chamado?");
+          const ok = await window.showAppConfirm("Tem certeza que deseja cancelar este chamado?");
           if (!ok) return;
 
           state.cancelando = true;
@@ -104,12 +104,12 @@
             state.cancelando = false;
             state.chamado = { ...state.chamado, status: "Cancelado" };
             render();
-            window.alert("Chamado cancelado!");
+            window.showAppAlert("Chamado cancelado!");
             if (props && typeof props.setTela === "function") props.setTela("acompanharChamado");
           } catch (error) {
             state.cancelando = false;
             render();
-            window.alert("Erro ao cancelar chamado.");
+            window.showAppAlert("Erro ao cancelar chamado.");
           }
         });
       }

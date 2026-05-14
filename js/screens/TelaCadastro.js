@@ -91,11 +91,11 @@
       const senha = senhaEl.value;
 
       if (!nome || !endereco || !telefone || !email || !senha) {
-        window.alert("Atenção\nPor favor, preencha todos os campos.");
+        window.showAppAlert("Atenção\nPor favor, preencha todos os campos.");
         return;
       }
       if (senha.length < 6) {
-        window.alert("Atenção\nA senha deve ter no mínimo 6 caracteres.");
+        window.showAppAlert("Atenção\nA senha deve ter no mínimo 6 caracteres.");
         return;
       }
 
@@ -113,7 +113,7 @@
           .get();
 
         if (!emailExiste.empty) {
-          window.alert("Atenção\nEste e-mail já está cadastrado.");
+          window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
           btnCadastrar.disabled = false;
           btnCadastrar.textContent = "Cadastrar";
           return;
@@ -147,7 +147,7 @@
         }
       } catch (error) {
         console.log("Erro cadastro:", error);
-        window.alert("Erro\nNão foi possível realizar o cadastro. Tente novamente.");
+        window.showAppAlert("Erro\nNão foi possível realizar o cadastro. Tente novamente.");
       }
 
       btnCadastrar.disabled = false;

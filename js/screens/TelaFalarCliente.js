@@ -123,17 +123,17 @@
 
     function handleEnviar() {
       if (!state.clienteSelecionado) {
-        window.alert("Atenção ❄\nSelecione um cliente.");
+        window.showAppAlert("Atenção ❄\nSelecione um cliente.");
         return;
       }
       if (!state.mensagem.trim()) {
-        window.alert("Atenção ❄\nDigite uma mensagem.");
+        window.showAppAlert("Atenção ❄\nDigite uma mensagem.");
         return;
       }
 
       const numero = formatarTelefoneWhatsAppSafe(state.clienteSelecionado.telefone);
       if (!numero) {
-        window.alert("Atenção ❄\nEste cliente não possui telefone cadastrado.");
+        window.showAppAlert("Atenção ❄\nEste cliente não possui telefone cadastrado.");
         return;
       }
 

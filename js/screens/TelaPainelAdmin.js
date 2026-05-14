@@ -182,10 +182,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function badgeHtml(count) {
@@ -442,14 +439,14 @@
         await marcarChamadoExcluidoSafe(chamado);
         await atualizarDadosPainel(false);
       } catch (error) {
-        window.alert("Não foi possível excluir o chamado.");
+        window.showAppAlert("Não foi possível excluir o chamado.");
       }
     }
 
     async function handleResponderContestacao() {
       if (!state.respondendo) return;
       if (!state.textoResposta.trim()) {
-        window.alert("Atenção ❄\nInforme a resposta.");
+        window.showAppAlert("Atenção ❄\nInforme a resposta.");
         return;
       }
 
