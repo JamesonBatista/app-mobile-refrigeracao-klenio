@@ -109,6 +109,13 @@
     state.bloqueios = novo;
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function renderTelaAgendaAdmin(root, props) {
     const state = {
       dias: [],
@@ -177,7 +184,7 @@
         return;
       }
 
-      const ok = window.confirm("Tem certeza que deseja bloquear todos os horários deste dia?");
+      const ok = await showConfirm("Tem certeza que deseja bloquear todos os horários deste dia?");
       if (!ok) return;
 
       state.salvando = true;

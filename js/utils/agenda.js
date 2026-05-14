@@ -29,6 +29,10 @@
     Cancelado: 4,
   };
 
+  const DB_READY_WAIT_MS = 2200;
+  const DB_GET_TIMEOUT_MS = 7000;
+  const REMOTE_RETRY_INTERVAL_MS = 900;
+
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
     try {
@@ -36,6 +40,83 @@
     } catch (error) {
       return null;
     }
+  }
+
+  function delay(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  function withTimeout(promise, timeoutMs) {
+    return Promise.race([
+      promise,
+      new Promise(function (_, reject) {
+        setTimeout(function () {
+          reject(new Error("Firestore timeout"));
+        }, timeoutMs);
+      }),
+    ]);
+  }
+
+  async function waitForDbCollection(nome, timeoutMs) {
+    const maxWaitMs = typeof timeoutMs === "number" ? timeoutMs : DB_READY_WAIT_MS;
+    const startedAt = Date.now();
+    let collection = getDbCollection(nome);
+
+    while (!collection && Date.now() - startedAt < maxWaitMs) {
+      await delay(150);
+      collection = getDbCollection(nome);
+    }
+
+    return collection;
+  }
+
+  function subscribeWithStorageFallback(options) {
+    const storageKey = options.storageKey;
+    const callback = options.callback;
+    const localProducer = options.localProducer;
+    const connectRemote = options.connectRemote;
+    const intervalMs = options.intervalMs;
+    let stopped = false;
+    let unsubscribeStorage = watchStorageChange(storageKey, callback, localProducer, intervalMs);
+    let unsubscribeRemote = null;
+    let retryTimer = null;
+
+    function stopRetry() {
+      if (!retryTimer) return;
+      clearInterval(retryTimer);
+      retryTimer = null;
+    }
+
+    function tryConnectRemote() {
+      if (stopped || unsubscribeRemote) return;
+      try {
+        const candidate = connectRemote();
+        if (typeof candidate === "function") {
+          unsubscribeRemote = candidate;
+          if (typeof unsubscribeStorage === "function") {
+            unsubscribeStorage();
+            unsubscribeStorage = null;
+          }
+          stopRetry();
+        }
+      } catch (error) {
+        console.log("Erro conectar listener remoto:", error);
+      }
+    }
+
+    tryConnectRemote();
+    if (!unsubscribeRemote) {
+      retryTimer = setInterval(tryConnectRemote, REMOTE_RETRY_INTERVAL_MS);
+    }
+
+    return function unsubscribeAll() {
+      stopped = true;
+      stopRetry();
+      if (typeof unsubscribeStorage === "function") unsubscribeStorage();
+      if (typeof unsubscribeRemote === "function") unsubscribeRemote();
+    };
   }
 
   function parseArrayStorage(chave) {
@@ -222,10 +303,10 @@
   }
 
   async function carregarChamados() {
-    const collection = getDbCollection("chamados");
+    const collection = await waitForDbCollection("chamados");
     if (!collection) return parseArrayStorage(STORAGE_KEYS.chamados);
     try {
-      const snapshot = await collection.get();
+      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const listaRemota = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
@@ -310,14 +391,14 @@
   }
 
   async function carregarChamadoPorNumero(numero) {
-    const collection = getDbCollection("chamados");
+    const collection = await waitForDbCollection("chamados");
     if (!collection) {
       return parseArrayStorage(STORAGE_KEYS.chamados).find(function (item) {
         return item && item.numero === numero;
       }) || null;
     }
     try {
-      const doc = await collection.doc(numero).get();
+      const doc = await withTimeout(collection.doc(numero).get(), DB_GET_TIMEOUT_MS);
       if (doc.exists) return { id: doc.id, ...doc.data() };
       return null;
     } catch (error) {
@@ -327,66 +408,59 @@
   }
 
   function ouvirChamado(numero, callback) {
-    const collection = getDbCollection("chamados");
-    if (collection && collection.doc(numero) && typeof collection.doc(numero).onSnapshot === "function") {
-      return collection.doc(numero).onSnapshot(function (doc) {
-        if (doc.exists) callback({ id: doc.id, ...doc.data() });
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.chamados,
-      function (lista) {
-        const item = lista.find(function (entry) {
-          return entry && entry.numero === numero;
-        });
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.chamados,
+      callback: function (lista) {
+        const item = Array.isArray(lista)
+          ? lista.find(function (entry) {
+              return entry && entry.numero === numero;
+            })
+          : null;
         if (item) callback(item);
       },
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.chamados);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("chamados");
+        if (!collection) return null;
+        const docRef = collection.doc(numero);
+        if (!docRef || typeof docRef.onSnapshot !== "function") return null;
+        return docRef.onSnapshot(function (doc) {
+          if (!doc.exists) return;
+          callback({ id: doc.id, ...doc.data() });
+        });
+      },
+    });
   }
 
   function ouvirChamados(callback) {
-    const collection = getDbCollection("chamados");
-    if (collection && typeof collection.onSnapshot === "function") {
-      return collection.onSnapshot(function (snapshot) {
-        const listaRemota = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        const lista = mergeChamadosRemotosComLocais(listaRemota);
-        setArrayStorage(STORAGE_KEYS.chamados, lista);
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.chamados,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.chamados,
       callback,
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.chamados);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("chamados");
+        if (!collection || typeof collection.onSnapshot !== "function") return null;
+        return collection.onSnapshot(function (snapshot) {
+          const listaRemota = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          const lista = mergeChamadosRemotosComLocais(listaRemota);
+          setArrayStorage(STORAGE_KEYS.chamados, lista);
+          callback(lista);
+        });
+      },
+    });
   }
 
   function ouvirChamadosCliente(emailCliente, callback) {
-    const collection = getDbCollection("chamados");
-    if (collection && typeof collection.where === "function") {
-      return collection
-        .where("clienteEmail", "==", emailCliente)
-        .onSnapshot(function (snapshot) {
-          const lista = snapshot.docs.map(function (doc) {
-            return { id: doc.id, ...doc.data() };
-          });
-          lista.sort(function (a, b) {
-            return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
-          });
-          callback(lista);
-        });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.chamados,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.chamados,
       callback,
-      function () {
+      localProducer: function () {
         const lista = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
           return item && item.clienteEmail === emailCliente;
         });
@@ -394,15 +468,30 @@
           return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
         });
         return lista;
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("chamados");
+        if (!collection || typeof collection.where !== "function") return null;
+        return collection
+          .where("clienteEmail", "==", emailCliente)
+          .onSnapshot(function (snapshot) {
+            const lista = snapshot.docs.map(function (doc) {
+              return { id: doc.id, ...doc.data() };
+            });
+            lista.sort(function (a, b) {
+              return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
+            });
+            callback(lista);
+          });
+      },
+    });
   }
 
   async function carregarBloqueios() {
-    const collection = getDbCollection("bloqueios");
+    const collection = await waitForDbCollection("bloqueios");
     if (!collection) return parseObjectStorage(STORAGE_KEYS.bloqueios);
     try {
-      const snapshot = await collection.get();
+      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const bloqueios = {};
       snapshot.docs.forEach(function (doc) {
         bloqueios[doc.id] = doc.data().horarios || [];
@@ -467,24 +556,25 @@
   }
 
   function ouvirBloqueios(callback) {
-    const collection = getDbCollection("bloqueios");
-    if (collection && typeof collection.onSnapshot === "function") {
-      return collection.onSnapshot(function (snapshot) {
-        const bloqueios = {};
-        snapshot.docs.forEach(function (doc) {
-          bloqueios[doc.id] = doc.data().horarios || [];
-        });
-        setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
-        callback(bloqueios);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.bloqueios,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.bloqueios,
       callback,
-      function () {
+      localProducer: function () {
         return parseObjectStorage(STORAGE_KEYS.bloqueios);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("bloqueios");
+        if (!collection || typeof collection.onSnapshot !== "function") return null;
+        return collection.onSnapshot(function (snapshot) {
+          const bloqueios = {};
+          snapshot.docs.forEach(function (doc) {
+            bloqueios[doc.id] = doc.data().horarios || [];
+          });
+          setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
+          callback(bloqueios);
+        });
+      },
+    });
   }
 
   async function getHorariosDisponiveis(data) {
@@ -495,9 +585,11 @@
     const agora = new Date();
     const agoraEmMinutos = agora.getHours() * 60 + agora.getMinutes();
 
-    const collectionChamados = getDbCollection("chamados");
-    const collectionBloqueios = getDbCollection("bloqueios");
-    const collectionProgramados = getDbCollection("programados");
+    const [collectionChamados, collectionBloqueios, collectionProgramados] = await Promise.all([
+      waitForDbCollection("chamados", 1200),
+      waitForDbCollection("bloqueios", 1200),
+      waitForDbCollection("programados", 1200),
+    ]);
 
     try {
       let chamadosDia = [];
@@ -505,11 +597,14 @@
       let bloqueiosDia = [];
 
       if (collectionChamados && collectionBloqueios && collectionProgramados) {
-        const [chamadosSnap, bloqueioDoc, programadosSnap] = await Promise.all([
-          collectionChamados.where("dataChave", "==", chave).get(),
-          collectionBloqueios.doc(chave).get(),
-          collectionProgramados.where("dataChave", "==", chave).get(),
-        ]);
+        const [chamadosSnap, bloqueioDoc, programadosSnap] = await withTimeout(
+          Promise.all([
+            collectionChamados.where("dataChave", "==", chave).get(),
+            collectionBloqueios.doc(chave).get(),
+            collectionProgramados.where("dataChave", "==", chave).get(),
+          ]),
+          DB_GET_TIMEOUT_MS
+        );
 
         chamadosDia = chamadosSnap.docs.map(function (doc) {
           return doc.data();
@@ -597,10 +692,10 @@
   }
 
   async function carregarClientes() {
-    const collection = getDbCollection("clientes");
+    const collection = await waitForDbCollection("clientes");
     if (!collection) return consolidarClientesLocais();
     try {
-      const snapshot = await collection.get();
+      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const lista = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
@@ -628,14 +723,17 @@
   }
 
   async function carregarProgramados(emailCliente) {
-    const collection = getDbCollection("programados");
+    const collection = await waitForDbCollection("programados");
     if (!collection) {
       return parseArrayStorage(STORAGE_KEYS.programados).filter(function (item) {
         return item && item.clienteEmail === emailCliente;
       });
     }
     try {
-      const snapshot = await collection.where("clienteEmail", "==", emailCliente).get();
+      const snapshot = await withTimeout(
+        collection.where("clienteEmail", "==", emailCliente).get(),
+        DB_GET_TIMEOUT_MS
+      );
       return snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
@@ -646,10 +744,10 @@
   }
 
   async function carregarTodosProgramados() {
-    const collection = getDbCollection("programados");
+    const collection = await waitForDbCollection("programados");
     if (!collection) return parseArrayStorage(STORAGE_KEYS.programados);
     try {
-      const snapshot = await collection.get();
+      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const lista = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
@@ -662,44 +760,46 @@
   }
 
   function ouvirProgramados(emailCliente, callback) {
-    const collection = getDbCollection("programados");
-    if (collection && typeof collection.where === "function") {
-      return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.programados,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.programados,
       callback,
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.programados).filter(function (item) {
           return item && item.clienteEmail === emailCliente;
         });
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("programados");
+        if (!collection || typeof collection.where !== "function") return null;
+        return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          callback(lista);
+        });
+      },
+    });
   }
 
   function ouvirTodosProgramados(callback) {
-    const collection = getDbCollection("programados");
-    if (collection && typeof collection.onSnapshot === "function") {
-      return collection.onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        setArrayStorage(STORAGE_KEYS.programados, lista);
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.programados,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.programados,
       callback,
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.programados);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("programados");
+        if (!collection || typeof collection.onSnapshot !== "function") return null;
+        return collection.onSnapshot(function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          setArrayStorage(STORAGE_KEYS.programados, lista);
+          callback(lista);
+        });
+      },
+    });
   }
 
   async function atualizarProgramado(numero, updates) {
@@ -780,24 +880,29 @@
   }
 
   function ouvirProgramado(numero, callback) {
-    const collection = getDbCollection("programados");
-    if (collection && collection.doc(numero) && typeof collection.doc(numero).onSnapshot === "function") {
-      return collection.doc(numero).onSnapshot(function (doc) {
-        if (doc.exists) callback({ id: doc.id, ...doc.data() });
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.programados,
-      function (lista) {
-        const item = lista.find(function (entry) {
-          return entry && entry.numero === numero;
-        });
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.programados,
+      callback: function (lista) {
+        const item = Array.isArray(lista)
+          ? lista.find(function (entry) {
+              return entry && entry.numero === numero;
+            })
+          : null;
         if (item) callback(item);
       },
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.programados);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("programados");
+        if (!collection) return null;
+        const docRef = collection.doc(numero);
+        if (!docRef || typeof docRef.onSnapshot !== "function") return null;
+        return docRef.onSnapshot(function (doc) {
+          if (doc.exists) callback({ id: doc.id, ...doc.data() });
+        });
+      },
+    });
   }
 
   async function editarProgramado(numero, updates) {
@@ -854,51 +959,53 @@
   }
 
   function ouvirOrcamentosCliente(emailCliente, callback) {
-    const collection = getDbCollection("orcamentos");
-    if (collection && typeof collection.where === "function") {
-      return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.orcamentos,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.orcamentos,
       callback,
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.orcamentos).filter(function (item) {
           return item && item.clienteEmail === emailCliente;
         });
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("orcamentos");
+        if (!collection || typeof collection.where !== "function") return null;
+        return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          callback(lista);
+        });
+      },
+    });
   }
 
   function ouvirTodosOrcamentos(callback) {
-    const collection = getDbCollection("orcamentos");
-    if (collection && typeof collection.onSnapshot === "function") {
-      return collection.onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        setArrayStorage(STORAGE_KEYS.orcamentos, lista);
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.orcamentos,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.orcamentos,
       callback,
-      function () {
+      localProducer: function () {
         return parseArrayStorage(STORAGE_KEYS.orcamentos);
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("orcamentos");
+        if (!collection || typeof collection.onSnapshot !== "function") return null;
+        return collection.onSnapshot(function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          setArrayStorage(STORAGE_KEYS.orcamentos, lista);
+          callback(lista);
+        });
+      },
+    });
   }
 
   async function carregarTodosOrcamentos() {
-    const collection = getDbCollection("orcamentos");
+    const collection = await waitForDbCollection("orcamentos");
     if (!collection) return parseArrayStorage(STORAGE_KEYS.orcamentos);
     try {
-      const snapshot = await collection.get();
+      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const lista = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       });
@@ -960,30 +1067,31 @@
   }
 
   function ouvirProfissionais(callback) {
-    const collection = getDbCollection("profissionais");
-    if (collection && typeof collection.onSnapshot === "function") {
-      return collection.onSnapshot(function (snapshot) {
-        const lista = snapshot.docs.map(function (doc) {
-          return { id: doc.id, ...doc.data() };
-        });
-        lista.sort(function (a, b) {
-          return String(a.nome || "").localeCompare(String(b.nome || ""));
-        });
-        setArrayStorage(STORAGE_KEYS.profissionais, lista);
-        callback(lista);
-      });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.profissionais,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.profissionais,
       callback,
-      function () {
+      localProducer: function () {
         const lista = parseArrayStorage(STORAGE_KEYS.profissionais);
         lista.sort(function (a, b) {
           return String(a.nome || "").localeCompare(String(b.nome || ""));
         });
         return lista;
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("profissionais");
+        if (!collection || typeof collection.onSnapshot !== "function") return null;
+        return collection.onSnapshot(function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          lista.sort(function (a, b) {
+            return String(a.nome || "").localeCompare(String(b.nome || ""));
+          });
+          setArrayStorage(STORAGE_KEYS.profissionais, lista);
+          callback(lista);
+        });
+      },
+    });
   }
 
   async function salvarRegistroFinanceiro(chamado) {
@@ -1045,29 +1153,30 @@
   }
 
   function ouvirRelatorios(callback) {
-    const collection = getDbCollection("relatorios");
-    if (collection && typeof collection.orderBy === "function") {
-      return collection
-        .orderBy("dataConclusaoISO", "desc")
-        .onSnapshot(function (snapshot) {
-          const lista = snapshot.docs.map(function (doc) {
-            return { id: doc.id, ...doc.data() };
-          });
-          setArrayStorage(STORAGE_KEYS.relatorios, lista);
-          callback(lista);
-        });
-    }
-    return watchStorageChange(
-      STORAGE_KEYS.relatorios,
+    return subscribeWithStorageFallback({
+      storageKey: STORAGE_KEYS.relatorios,
       callback,
-      function () {
+      localProducer: function () {
         const lista = parseArrayStorage(STORAGE_KEYS.relatorios);
         lista.sort(function (a, b) {
           return String(b.dataConclusaoISO || "").localeCompare(String(a.dataConclusaoISO || ""));
         });
         return lista;
-      }
-    );
+      },
+      connectRemote: function () {
+        const collection = getDbCollection("relatorios");
+        if (!collection || typeof collection.orderBy !== "function") return null;
+        return collection
+          .orderBy("dataConclusaoISO", "desc")
+          .onSnapshot(function (snapshot) {
+            const lista = snapshot.docs.map(function (doc) {
+              return { id: doc.id, ...doc.data() };
+            });
+            setArrayStorage(STORAGE_KEYS.relatorios, lista);
+            callback(lista);
+          });
+      },
+    });
   }
 
   function formatarTelefoneWhatsApp(telefone) {

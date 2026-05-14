@@ -87,6 +87,13 @@
     setProfissionaisLocal(lista);
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function renderTelaProfissionais(root, props) {
     const state = {
       profissionais: [],
@@ -155,7 +162,7 @@
     async function handleExcluir(id) {
       const profissional = state.profissionais.find((item) => item.id === id);
       if (!profissional) return;
-      const ok = window.confirm(`Tem certeza que deseja excluir ${profissional.nome}?`);
+      const ok = await showConfirm(`Tem certeza que deseja excluir ${profissional.nome}?`);
       if (!ok) return;
       await excluirProfissionalSafe(id);
       window.alert("Excluído!\nProfissional removido com sucesso.");

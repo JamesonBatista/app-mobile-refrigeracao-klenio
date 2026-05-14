@@ -292,6 +292,12 @@
   animation: opSpin 700ms linear infinite;
 }
 
+.ch-btn-inline-loading .op-spinner {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
 @keyframes opSpin {
   to {
     transform: rotate(360deg);

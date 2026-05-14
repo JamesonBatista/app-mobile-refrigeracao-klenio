@@ -192,6 +192,13 @@
     }
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function renderTelaCriarOrcamentoAdmin(root, props) {
     const state = {
       clientes: [],
@@ -325,7 +332,9 @@
       state.carregando = false;
       render();
 
-      const enviar = window.confirm(`Orçamento criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`);
+      const enviar = await showConfirm(
+        `Orçamento criado! ❄\n\nDeseja notificar ${state.clienteSelecionado.nome} via WhatsApp?`
+      );
       if (enviar) notificarWhatsappOrcamento(state.clienteSelecionado.telefone, orcamento);
       if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
     }
@@ -666,7 +675,11 @@
             </article>
 
             <button class="op-btn primary" style="margin-top:20px;background:#8e44ad" data-action="criar" type="button" ${state.carregando ? "disabled" : ""}>
-              ${state.carregando ? '<span class="op-spinner"></span>' : "💰 Enviar Orçamento ao Cliente"}
+              ${
+                state.carregando
+                  ? '<span class="ch-btn-inline-loading"><span class="op-spinner"></span><span>Enviando orçamento...</span></span>'
+                  : "💰 Enviar Orçamento ao Cliente"
+              }
             </button>
 
             <div style="height:20px"></div>

@@ -145,6 +145,13 @@
     }
   }
 
+  async function showConfirm(message) {
+    if (typeof window.showCustomConfirm === "function") {
+      return window.showCustomConfirm(message);
+    }
+    return window.confirm(message);
+  }
+
   function ouvirTodosOrcamentosSafe(callback) {
     if (typeof window.ouvirTodosOrcamentos === "function") {
       const unsub = window.ouvirTodosOrcamentos(function (lista) {
@@ -235,14 +242,14 @@
       state.descricao = "";
       render();
 
-      const enviarWA = window.confirm("Deseja enviar o orçamento por WhatsApp para o cliente?");
+      const enviarWA = await showConfirm("Deseja enviar o orçamento por WhatsApp para o cliente?");
       if (enviarWA) notificarWhatsappOrcamentoEnviado(atualizado);
     }
 
     async function handleCancelar(numero) {
       const orc = state.orcamentos.find((o) => o.numero === numero);
       if (!orc) return;
-      const ok = window.confirm(`Tem certeza que deseja cancelar o orçamento ${orc.numero}?`);
+      const ok = await showConfirm(`Tem certeza que deseja cancelar o orçamento ${orc.numero}?`);
       if (!ok) return;
 
       await atualizarOrcamentoSafe(numero, { status: "Cancelado" });
@@ -252,14 +259,14 @@
         `Seu orçamento ${orc.numero} foi cancelado pelo suporte.`
       );
 
-      const enviarWA = window.confirm("Deseja notificar o cliente via WhatsApp sobre o cancelamento?");
+      const enviarWA = await showConfirm("Deseja notificar o cliente via WhatsApp sobre o cancelamento?");
       if (enviarWA) notificarWhatsappOrcamentoCancelado(orc);
     }
 
     async function handleExcluir(numero) {
       const orc = state.orcamentos.find((o) => o.numero === numero);
       if (!orc) return;
-      const ok = window.confirm(
+      const ok = await showConfirm(
         `Tem certeza que deseja excluir o orçamento ${orc.numero}?\n\nEle será removido do painel.`
       );
       if (!ok) return;
