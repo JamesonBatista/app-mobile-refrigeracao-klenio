@@ -193,10 +193,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function renderTelaCriarOrcamentoAdmin(root, props) {
@@ -278,27 +275,27 @@
 
     async function handleCriar() {
       if (!state.clienteSelecionado) {
-        window.alert("Atenção ❄\nSelecione um cliente.");
+        window.showAppAlert("Atenção ❄\nSelecione um cliente.");
         return;
       }
       if (state.tiposServico.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de serviço.");
+        window.showAppAlert("Atenção ❄\nSelecione ao menos um tipo de serviço.");
         return;
       }
       if (state.tiposAparelho.length === 0) {
-        window.alert("Atenção ❄\nSelecione ao menos um tipo de aparelho.");
+        window.showAppAlert("Atenção ❄\nSelecione ao menos um tipo de aparelho.");
         return;
       }
       if (!state.btu) {
-        window.alert("Atenção ❄\nSelecione os BTUs.");
+        window.showAppAlert("Atenção ❄\nSelecione os BTUs.");
         return;
       }
       if (!state.endereco.trim()) {
-        window.alert("Atenção ❄\nInforme o endereço.");
+        window.showAppAlert("Atenção ❄\nInforme o endereço.");
         return;
       }
       if (!state.valor.trim()) {
-        window.alert("Atenção ❄\nInforme o valor do orçamento.");
+        window.showAppAlert("Atenção ❄\nInforme o valor do orçamento.");
         return;
       }
 

@@ -146,10 +146,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function ouvirTodosOrcamentosSafe(callback) {
@@ -210,7 +207,7 @@
     async function handleEnviarOrcamento() {
       if (!state.orcamentoSelecionado) return;
       if (!state.valor.trim()) {
-        window.alert("Atenção ❄\nInforme o valor do orçamento.");
+        window.showAppAlert("Atenção ❄\nInforme o valor do orçamento.");
         return;
       }
 
@@ -273,7 +270,7 @@
       try {
         await excluirOrcamentoSafe(orc);
       } catch (error) {
-        window.alert("Não foi possível excluir o orçamento.");
+        window.showAppAlert("Não foi possível excluir o orçamento.");
       }
     }
 

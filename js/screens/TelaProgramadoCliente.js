@@ -130,7 +130,9 @@
     }
 
     async function handleAceitar(programado) {
-      const ok = window.confirm(`Confirma o agendamento para ${programado.dataFormatada} às ${programado.horario}?`);
+      const ok = await window.showAppConfirm(
+        `Confirma o agendamento para ${programado.dataFormatada} às ${programado.horario}?`
+      );
       if (!ok) return;
       state.salvando = programado.numero;
       render();
@@ -143,7 +145,7 @@
     async function handleContestar() {
       if (!state.contestando) return;
       if (!state.motivo.trim()) {
-        window.alert("Atenção ❄\nInforme o motivo da contestação.");
+        window.showAppAlert("Atenção ❄\nInforme o motivo da contestação.");
         return;
       }
       state.salvando = state.contestando.numero;
@@ -154,7 +156,7 @@
       state.motivo = "";
       sincronizarFallback();
       render();
-      window.alert("Contestação enviada! ❄\nNossa equipe irá analisar e responder em breve.");
+      window.showAppAlert("Contestação enviada! ❄\nNossa equipe irá analisar e responder em breve.");
     }
 
     function renderHistorico(programado) {

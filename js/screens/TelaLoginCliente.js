@@ -74,7 +74,7 @@
       const email = inputEmail.value.trim();
       const senha = inputSenha.value;
       if (!email || !senha.trim()) {
-        window.alert("Atenção ❄\nPreencha e-mail e senha.");
+        window.showAppAlert("Atenção ❄\nPreencha e-mail e senha.");
         return;
       }
 
@@ -90,7 +90,7 @@
         const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
 
         if (!doc.exists) {
-          window.alert("Erro ❄\nE-mail não encontrado.");
+          window.showAppAlert("Erro ❄\nE-mail não encontrado.");
           btnEntrar.disabled = false;
           btnEntrar.textContent = "❄ Entrar";
           return;
@@ -98,7 +98,7 @@
 
         const dados = doc.data();
         if (dados.senha !== senha) {
-          window.alert("Erro ❄\nSenha incorreta.");
+          window.showAppAlert("Erro ❄\nSenha incorreta.");
           btnEntrar.disabled = false;
           btnEntrar.textContent = "❄ Entrar";
           return;
@@ -128,7 +128,7 @@
         }
       } catch (error) {
         console.log("Erro login:", error);
-        window.alert("Erro ❄\nOcorreu um erro ao fazer login.");
+        window.showAppAlert("Erro ❄\nOcorreu um erro ao fazer login.");
         btnEntrar.disabled = false;
         btnEntrar.textContent = "❄ Entrar";
       }

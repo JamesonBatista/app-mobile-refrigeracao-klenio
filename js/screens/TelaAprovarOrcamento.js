@@ -160,7 +160,7 @@
 
     async function handleConfirmar() {
       if (!state.diaSelecionado || !state.horario) {
-        window.alert("Atenção ❄\nSelecione o dia e horário do atendimento.");
+        window.showAppAlert("Atenção ❄\nSelecione o dia e horário do atendimento.");
         return;
       }
       if (!orcamento) return;
@@ -210,7 +210,7 @@
       state.salvando = false;
       render();
 
-      window.alert(
+      window.showAppAlert(
         `Orçamento aprovado! ✅\n\nSeu chamado foi criado para ${formatarData(state.diaSelecionado)} às ${state.horario}. Acompanhe em "Meus Chamados".`
       );
       if (props && typeof props.setTela === "function") props.setTela("acompanharChamado");

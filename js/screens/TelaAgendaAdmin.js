@@ -110,10 +110,7 @@
   }
 
   async function showConfirm(message) {
-    if (typeof window.showCustomConfirm === "function") {
-      return window.showCustomConfirm(message);
-    }
-    return window.confirm(message);
+    return window.showAppConfirm(message);
   }
 
   function renderTelaAgendaAdmin(root, props) {

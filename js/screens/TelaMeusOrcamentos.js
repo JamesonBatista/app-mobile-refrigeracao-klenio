@@ -172,7 +172,7 @@
     }
 
     async function handleAprovar(orcamento) {
-      const ok = window.confirm(
+      const ok = await window.showAppConfirm(
         `Deseja aprovar o orçamento ${orcamento.numero} no valor de R$ ${orcamento.valorOrcamento}?\n\nVocê irá escolher a data e horário do atendimento na próxima tela.`
       );
       if (!ok) return;
@@ -183,7 +183,7 @@
     }
 
     async function handleRecusar(orcamento) {
-      const ok = window.confirm(`Tem certeza que deseja recusar o orçamento ${orcamento.numero}?`);
+      const ok = await window.showAppConfirm(`Tem certeza que deseja recusar o orçamento ${orcamento.numero}?`);
       if (!ok) return;
       state.salvando = orcamento.numero;
       render();
@@ -194,7 +194,7 @@
     }
 
     async function handleCancelar(orcamento) {
-      const ok = window.confirm(`Tem certeza que deseja cancelar o orçamento ${orcamento.numero}?`);
+      const ok = await window.showAppConfirm(`Tem certeza que deseja cancelar o orçamento ${orcamento.numero}?`);
       if (!ok) return;
       state.salvando = orcamento.numero;
       render();

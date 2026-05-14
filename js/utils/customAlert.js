@@ -73,7 +73,7 @@
     state.msgEl.textContent = payload.message;
     const isConfirm = payload.type === "confirm";
     state.cancelBtn.classList.toggle("is-hidden", !isConfirm);
-    state.okBtn.textContent = isConfirm ? "OK" : "OK";
+    state.okBtn.textContent = "OK";
     state.overlay.classList.add("is-open");
     state.aberto = true;
 
@@ -118,8 +118,30 @@
     });
   }
 
+  function showAppAlert(value) {
+    if (typeof window.showCustomAlert === "function") {
+      window.showCustomAlert(value);
+      return;
+    }
+    if (nativeAlert) {
+      nativeAlert(toMessage(value));
+    }
+  }
+
+  function showAppConfirm(value) {
+    if (typeof window.showCustomConfirm === "function") {
+      return Promise.resolve(window.showCustomConfirm(value));
+    }
+    if (nativeConfirm) {
+      return Promise.resolve(nativeConfirm(toMessage(value)));
+    }
+    return Promise.resolve(false);
+  }
+
   window.showCustomConfirm = showCustomConfirm;
   window.showCustomAlert = showCustomAlert;
+  window.showAppAlert = showAppAlert;
+  window.showAppConfirm = showAppConfirm;
   window.alert = function alertOverride(message) {
     showCustomAlert(message);
   };
