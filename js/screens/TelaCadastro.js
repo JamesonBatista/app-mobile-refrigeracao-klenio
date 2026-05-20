@@ -2,6 +2,8 @@
 
 (function () {
   const CLIENTES_STORAGE_KEY = "@clientes";
+  const RETRY_EVERY_MS = 10000;
+  const RETRY_FOR_MS = 120000;
 
   function criarErroFirestoreIndisponivel() {
     const error = new Error("Firestore indisponível");
@@ -9,14 +11,56 @@
     return error;
   }
 
+  function delay(ms) {
+    return new Promise(function (resolve) {
+      setTimeout(resolve, ms);
+    });
+  }
+
+  function isErroRetryavel(error) {
+    if (typeof window.isFirestoreRetryableError === "function") {
+      return !!window.isFirestoreRetryableError(error);
+    }
+    const code = String((error && error.code) || "").toLowerCase();
+    if (!code) return true;
+    if (code.includes("permission-denied")) return false;
+    if (code.includes("failed-precondition")) return false;
+    if (code.includes("invalid-argument")) return false;
+    return (
+      code.includes("unavailable") ||
+      code.includes("deadline-exceeded") ||
+      code.includes("resource-exhausted") ||
+      code.includes("internal") ||
+      code.includes("aborted") ||
+      code.includes("cancelled") ||
+      code.includes("network")
+    );
+  }
+
   async function executarComRetryFirestore(operacao) {
     if (typeof window.runFirestoreWithRetry === "function") {
       return window.runFirestoreWithRetry(operacao, {
-        retryEveryMs: 10000,
-        retryForMs: 120000,
+        retryEveryMs: RETRY_EVERY_MS,
+        retryForMs: RETRY_FOR_MS,
       });
     }
-    return operacao();
+    const iniciouEm = Date.now();
+    let ultimoErro = null;
+    while (Date.now() - iniciouEm <= RETRY_FOR_MS) {
+      try {
+        return await operacao();
+      } catch (error) {
+        ultimoErro = error;
+        if (!isErroRetryavel(error)) {
+          throw error;
+        }
+        if (Date.now() - iniciouEm + RETRY_EVERY_MS > RETRY_FOR_MS) {
+          break;
+        }
+        await delay(RETRY_EVERY_MS);
+      }
+    }
+    throw ultimoErro || criarErroFirestoreIndisponivel();
   }
 
   function getClientesLocais() {
@@ -147,21 +191,6 @@
 
       try {
         const emailNormalizado = email.trim().toLowerCase();
-        const docExistente = await executarComRetryFirestore(async function () {
-          if (!window.db || typeof window.db.collection !== "function") {
-            throw criarErroFirestoreIndisponivel();
-          }
-          return window.db.collection("clientes").doc(emailNormalizado).get();
-        });
-        const existeRemoto = !!(docExistente && docExistente.exists);
-
-        if (existeRemoto) {
-          window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
-          btnCadastrar.disabled = false;
-          btnCadastrar.textContent = "Cadastrar";
-          return;
-        }
-
         const novoUsuario = {
           nome: nome.trim(),
           endereco: endereco.trim(),
@@ -197,9 +226,16 @@
         }
       } catch (error) {
         console.log("Erro cadastro:", error);
-        window.showAppAlert(
-          "Erro\nNão foi possível conectar ao Firestore após 2 minutos. O cadastro não foi salvo localmente. Tente novamente com internet."
-        );
+        const code = String((error && error.code) || "").toLowerCase();
+        if (code.includes("permission-denied")) {
+          window.showAppAlert(
+            "Erro\nO Firestore recusou a operação (permission-denied). Verifique as regras da coleção clientes."
+          );
+        } else {
+          window.showAppAlert(
+            "Erro\nNão foi possível conectar ao Firestore após 2 minutos. O cadastro não foi salvo localmente. Tente novamente com internet."
+          );
+        }
       }
 
       btnCadastrar.disabled = false;
