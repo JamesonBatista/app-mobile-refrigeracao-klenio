@@ -110,21 +110,48 @@
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 14px;
   cursor: pointer;
   margin-bottom: 24px;
+}
+
+.pr-banner-main {
+  min-width: 0;
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+.pr-banner-top {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pr-banner-led {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #25d366;
+  box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.8);
+  animation: prBannerLedBlink 1200ms ease-in-out infinite;
+  flex-shrink: 0;
 }
 
 .pr-banner-title {
   color: #fff;
   font-size: 16px;
   font-weight: 700;
+  margin: 0;
+  line-height: 1.15;
 }
 
 .pr-banner-sub {
   color: rgba(180, 220, 255, 0.6);
   font-size: 12px;
-  margin-top: 4px;
-  margin-bottom: 10px;
+  margin: 4px 0 10px;
+  line-height: 1.2;
 }
 
 .pr-banner-badge {
@@ -142,9 +169,30 @@
   font-weight: 700;
 }
 
+.pr-banner-icon-wrap {
+  flex-shrink: 0;
+  width: 56px;
+  height: 56px;
+  display: grid;
+  place-items: center;
+}
+
 .pr-banner-icon {
   font-size: 48px;
-  margin-left: 10px;
+  line-height: 1;
+  display: block;
+}
+
+@keyframes prBannerLedBlink {
+  0%,
+  100% {
+    opacity: 1;
+    box-shadow: 0 0 0 0 rgba(37, 211, 102, 0.8);
+  }
+  50% {
+    opacity: 0.35;
+    box-shadow: 0 0 0 6px rgba(37, 211, 102, 0.05);
+  }
 }
 
 .pr-secao-titulo {
