@@ -124,15 +124,18 @@
           </header>
 
           <button class="pr-banner" id="pr-banner" type="button">
-            <div>
-              <p class="pr-banner-title">Sistema de Ar</p>
+            <div class="pr-banner-main">
+              <div class="pr-banner-top">
+                <span class="pr-banner-led" aria-hidden="true"></span>
+                <p class="pr-banner-title">Sistema de Ar</p>
+              </div>
               <p class="pr-banner-sub">Seu conforto é nossa prioridade</p>
               <span class="pr-banner-badge">
                 <span class="pr-banner-temp" id="pr-temp"></span>
                 <span>🌡️</span>
               </span>
             </div>
-            <span class="pr-banner-icon">🌬️</span>
+            <span class="pr-banner-icon-wrap"><span class="pr-banner-icon">🌬️</span></span>
           </button>
 
           <p class="pr-secao-titulo">Ações Rápidas</p>
