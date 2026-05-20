@@ -136,15 +136,14 @@
           return String(item && item.email ? item.email : "").toLowerCase() === emailNormalizado;
         });
         let existeRemoto = false;
-        let podePersistirRemoto = false;
+        const dbDisponivel = !!(window.db && typeof window.db.collection === "function");
 
-        if (window.db && typeof window.db.collection === "function") {
+        if (dbDisponivel) {
           try {
             const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
             existeRemoto = !!(doc && doc.exists);
-            podePersistirRemoto = true;
           } catch (error) {
-            console.log("Cadastro remoto indisponível, seguindo com fallback local:", error);
+            console.log("Não foi possível validar cliente no Firestore antes do cadastro:", error);
           }
         }
 
@@ -166,9 +165,11 @@
           token: "",
         };
 
-        if (podePersistirRemoto) {
+        let salvoNoFirestore = false;
+        if (dbDisponivel) {
           try {
             await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+            salvoNoFirestore = true;
           } catch (error) {
             console.log("Falha ao salvar no Firestore, mantendo cadastro local:", error);
           }
@@ -188,6 +189,12 @@
 
         if (props && typeof props.setTela === "function") {
           props.setTela("principal");
+        }
+
+        if (dbDisponivel && !salvoNoFirestore) {
+          window.showAppAlert(
+            "Conta criada localmente, mas não foi possível sincronizar com o banco agora.\nTente novamente com internet estável para sincronizar."
+          );
         }
       } catch (error) {
         console.log("Erro cadastro:", error);

@@ -24,6 +24,20 @@
     );
   }
 
+  function getUsuarioStoragePorEmail(chave, email) {
+    const emailNormalizado = String(email || "").trim().toLowerCase();
+    if (!emailNormalizado) return null;
+    try {
+      const raw = localStorage.getItem(chave);
+      const parsed = raw ? JSON.parse(raw) : null;
+      if (!parsed || typeof parsed !== "object") return null;
+      const emailUsuario = String(parsed.email || "").trim().toLowerCase();
+      return emailUsuario === emailNormalizado ? parsed : null;
+    } catch (error) {
+      return null;
+    }
+  }
+
   function criarFlocosFundo(container) {
     container.innerHTML = "";
     for (let i = 0; i < 10; i += 1) {
@@ -107,6 +121,7 @@
       try {
         const emailNormalizado = email.toLowerCase().trim();
         let dados = null;
+        let origemLocal = false;
 
         if (window.db && typeof window.db.collection === "function") {
           try {
@@ -121,6 +136,17 @@
 
         if (!dados) {
           dados = getClienteLocalPorEmail(emailNormalizado);
+          origemLocal = !!dados;
+        }
+
+        if (!dados) {
+          dados = getUsuarioStoragePorEmail("@usuario", emailNormalizado);
+          origemLocal = !!dados;
+        }
+
+        if (!dados) {
+          dados = getUsuarioStoragePorEmail("@usuarioLogado", emailNormalizado);
+          origemLocal = !!dados;
         }
 
         if (!dados) {
@@ -143,6 +169,37 @@
           endereco: dados.endereco || "",
           perfil: "cliente",
         };
+
+        if (origemLocal) {
+          const clienteLocal = {
+            nome: dados.nome || usuario.nome,
+            endereco: dados.endereco || usuario.endereco,
+            telefone: dados.telefone || usuario.telefone,
+            email: emailNormalizado,
+            senha: dados.senha,
+            perfil: "cliente",
+            dataCadastro: dados.dataCadastro || new Date().toLocaleDateString("pt-BR"),
+            token: dados.token || "",
+          };
+          const lista = getClientesLocais();
+          const idx = lista.findIndex(function (item) {
+            return String(item && item.email ? item.email : "").toLowerCase() === emailNormalizado;
+          });
+          if (idx >= 0) {
+            lista[idx] = { ...lista[idx], ...clienteLocal };
+          } else {
+            lista.unshift(clienteLocal);
+          }
+          localStorage.setItem(CLIENTES_STORAGE_KEY, JSON.stringify(lista));
+
+          if (window.db && typeof window.db.collection === "function") {
+            try {
+              await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });
+            } catch (syncError) {
+              console.log("Falha ao sincronizar cliente local com Firestore no login:", syncError);
+            }
+          }
+        }
 
         localStorage.setItem("@usuarioLogado", JSON.stringify(usuario));
         if (props && typeof props.configurarNotificacoes === "function") {
