@@ -344,7 +344,12 @@
       await collection.doc(numero).update(updates);
       updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     } catch (error) {
-      console.log("Erro atualizarChamado:", error);
+      try {
+        // Garante sincronização remota mesmo quando o documento ainda não existe.
+        await collection.doc(numero).set({ numero, ...updates }, { merge: true });
+      } catch (fallbackError) {
+        console.log("Erro atualizarChamado:", fallbackError);
+      }
       updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     }
   }

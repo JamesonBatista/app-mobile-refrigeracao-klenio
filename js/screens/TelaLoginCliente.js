@@ -1,6 +1,29 @@
 // js/screens/TelaLoginCliente.js
 
 (function () {
+  const CLIENTES_STORAGE_KEY = "@clientes";
+
+  function getClientesLocais() {
+    try {
+      const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function getClienteLocalPorEmail(email) {
+    const emailNormalizado = String(email || "").trim().toLowerCase();
+    if (!emailNormalizado) return null;
+    const lista = getClientesLocais();
+    return (
+      lista.find(function (item) {
+        return String(item && item.email ? item.email : "").trim().toLowerCase() === emailNormalizado;
+      }) || null
+    );
+  }
+
   function criarFlocosFundo(container) {
     container.innerHTML = "";
     for (let i = 0; i < 10; i += 1) {
@@ -82,21 +105,30 @@
       btnEntrar.innerHTML = '<div class="login-spinner"></div>';
 
       try {
-        if (!window.db) {
-          throw new Error("db indisponivel");
+        const emailNormalizado = email.toLowerCase().trim();
+        let dados = null;
+
+        if (window.db && typeof window.db.collection === "function") {
+          try {
+            const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
+            if (doc && doc.exists) {
+              dados = doc.data();
+            }
+          } catch (error) {
+            console.log("Login remoto indisponível, tentando fallback local:", error);
+          }
         }
 
-        const emailNormalizado = email.toLowerCase().trim();
-        const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
+        if (!dados) {
+          dados = getClienteLocalPorEmail(emailNormalizado);
+        }
 
-        if (!doc.exists) {
+        if (!dados) {
           window.showAppAlert("Erro ❄\nE-mail não encontrado.");
           btnEntrar.disabled = false;
           btnEntrar.textContent = "❄ Entrar";
           return;
         }
-
-        const dados = doc.data();
         if (dados.senha !== senha) {
           window.showAppAlert("Erro ❄\nSenha incorreta.");
           btnEntrar.disabled = false;
@@ -106,7 +138,7 @@
 
         const usuario = {
           nome: dados.nome,
-          email: dados.email,
+          email: dados.email || emailNormalizado,
           telefone: dados.telefone || "",
           endereco: dados.endereco || "",
           perfil: "cliente",

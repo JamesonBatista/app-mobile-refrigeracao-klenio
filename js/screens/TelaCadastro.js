@@ -1,6 +1,33 @@
 // js/screens/TelaCadastro.js
 
 (function () {
+  const CLIENTES_STORAGE_KEY = "@clientes";
+
+  function getClientesLocais() {
+    try {
+      const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function upsertClienteLocal(cliente) {
+    const lista = getClientesLocais();
+    const email = String(cliente && cliente.email ? cliente.email : "").toLowerCase();
+    if (!email) return;
+    const index = lista.findIndex(function (item) {
+      return String(item && item.email ? item.email : "").toLowerCase() === email;
+    });
+    if (index >= 0) {
+      lista[index] = { ...lista[index], ...cliente };
+    } else {
+      lista.unshift(cliente);
+    }
+    localStorage.setItem(CLIENTES_STORAGE_KEY, JSON.stringify(lista));
+  }
+
   function criarFlocosFundo(container) {
     container.innerHTML = "";
     for (let i = 0; i < 10; i += 1) {
@@ -103,16 +130,25 @@
       btnCadastrar.textContent = "Cadastrando...";
 
       try {
-        if (!window.db) {
-          throw new Error("db indisponivel");
+        const emailNormalizado = email.trim().toLowerCase();
+        const clientesLocais = getClientesLocais();
+        const existeLocal = clientesLocais.some(function (item) {
+          return String(item && item.email ? item.email : "").toLowerCase() === emailNormalizado;
+        });
+        let existeRemoto = false;
+        let podePersistirRemoto = false;
+
+        if (window.db && typeof window.db.collection === "function") {
+          try {
+            const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
+            existeRemoto = !!(doc && doc.exists);
+            podePersistirRemoto = true;
+          } catch (error) {
+            console.log("Cadastro remoto indisponível, seguindo com fallback local:", error);
+          }
         }
 
-        const emailNormalizado = email.trim().toLowerCase();
-        const emailExiste = await window.db.collection("clientes")
-          .where("email", "==", emailNormalizado)
-          .get();
-
-        if (!emailExiste.empty) {
+        if (existeLocal || existeRemoto) {
           window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
           btnCadastrar.disabled = false;
           btnCadastrar.textContent = "Cadastrar";
@@ -130,7 +166,15 @@
           token: "",
         };
 
-        await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+        if (podePersistirRemoto) {
+          try {
+            await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+          } catch (error) {
+            console.log("Falha ao salvar no Firestore, mantendo cadastro local:", error);
+          }
+        }
+
+        upsertClienteLocal(novoUsuario);
         localStorage.setItem("@usuario", JSON.stringify(novoUsuario));
         localStorage.setItem("@usuarioLogado", JSON.stringify(novoUsuario));
 
