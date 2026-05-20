@@ -32,6 +32,8 @@
   const DB_READY_WAIT_MS = 2200;
   const DB_GET_TIMEOUT_MS = 7000;
   const REMOTE_RETRY_INTERVAL_MS = 900;
+  const FIRESTORE_RETRY_EVERY_MS = 10000;
+  const FIRESTORE_RETRY_FOR_MS = 120000;
 
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
@@ -46,6 +48,24 @@
     return new Promise(function (resolve) {
       setTimeout(resolve, ms);
     });
+  }
+
+  function criarErroFirestoreIndisponivel() {
+    const error = new Error("Firestore indisponível");
+    error.code = "unavailable";
+    return error;
+  }
+
+  async function executarComRetryFirestore(operacao, options) {
+    if (typeof window.runFirestoreWithRetry === "function") {
+      const baseOptions = options && typeof options === "object" ? options : {};
+      return window.runFirestoreWithRetry(operacao, {
+        ...baseOptions,
+        retryEveryMs: FIRESTORE_RETRY_EVERY_MS,
+        retryForMs: FIRESTORE_RETRY_FOR_MS,
+      });
+    }
+    return operacao();
   }
 
   function withTimeout(promise, timeoutMs) {
@@ -320,37 +340,47 @@
   }
 
   async function salvarChamado(chamado) {
-    const collection = getDbCollection("chamados");
-    if (!collection) {
-      upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
-      return;
-    }
     try {
-      await collection.doc(chamado.numero).set(chamado);
+      await executarComRetryFirestore(async function () {
+        const collection = getDbCollection("chamados");
+        if (!collection) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        await collection.doc(chamado.numero).set(chamado);
+      });
       upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
     } catch (error) {
       console.log("Erro salvarChamado:", error);
-      upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
+      throw error;
     }
   }
 
   async function atualizarChamado(numero, updates) {
-    const collection = getDbCollection("chamados");
-    if (!collection) {
-      updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
-      return;
-    }
     try {
-      await collection.doc(numero).update(updates);
+      await executarComRetryFirestore(async function () {
+        const collection = getDbCollection("chamados");
+        if (!collection) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        try {
+          await collection.doc(numero).update(updates);
+        } catch (error) {
+          const code = String((error && error.code) || "").toLowerCase();
+          if (code.includes("not-found")) {
+            await collection.doc(numero).set({ numero, ...updates }, { merge: true });
+            return;
+          }
+          throw error;
+        }
+      }, {
+        maxAttempts: 0,
+        initialDelayMs: 900,
+        maxDelayMs: 7000,
+      });
       updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     } catch (error) {
-      try {
-        // Garante sincronização remota mesmo quando o documento ainda não existe.
-        await collection.doc(numero).set({ numero, ...updates }, { merge: true });
-      } catch (fallbackError) {
-        console.log("Erro atualizarChamado:", fallbackError);
-      }
-      updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
+      console.log("Erro atualizarChamado:", error);
+      throw error;
     }
   }
 
@@ -510,53 +540,58 @@
   }
 
   async function salvarBloqueio(chave, horarios) {
-    const collection = getDbCollection("bloqueios");
-    if (!collection) {
-      const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
-      bloqueios[chave] = Array.isArray(horarios) ? horarios : [];
-      setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
-      return;
-    }
+    const horariosLimpos = Array.from(new Set(Array.isArray(horarios) ? horarios : []));
     try {
-      await collection.doc(chave).set({ horarios });
+      await executarComRetryFirestore(async function () {
+        const collection = getDbCollection("bloqueios");
+        if (!collection) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        await collection.doc(chave).set({ horarios: horariosLimpos });
+      }, {
+        maxAttempts: 0,
+        initialDelayMs: 900,
+        maxDelayMs: 7000,
+      });
       const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
-      bloqueios[chave] = Array.isArray(horarios) ? horarios : [];
+      bloqueios[chave] = horariosLimpos;
       setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
     } catch (error) {
       console.log("Erro salvarBloqueio:", error);
+      throw error;
     }
   }
 
   async function removerBloqueio(chave, horario) {
-    const collection = getDbCollection("bloqueios");
-    if (!collection) {
-      const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
-      const lista = Array.isArray(bloqueios[chave]) ? bloqueios[chave] : [];
-      const novos = lista.filter(function (item) {
-        return item !== horario;
+    const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
+    const listaAtual = Array.isArray(bloqueios[chave]) ? bloqueios[chave] : [];
+    const novos = listaAtual.filter(function (item) {
+      return item !== horario;
+    });
+
+    try {
+      await executarComRetryFirestore(async function () {
+        const collection = getDbCollection("bloqueios");
+        if (!collection) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        if (novos.length === 0) {
+          await collection.doc(chave).delete();
+        } else {
+          await collection.doc(chave).set({ horarios: novos });
+        }
+      }, {
+        maxAttempts: 0,
+        initialDelayMs: 900,
+        maxDelayMs: 7000,
       });
+
       if (novos.length === 0) delete bloqueios[chave];
       else bloqueios[chave] = novos;
       setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
-      return;
-    }
-    try {
-      const doc = await collection.doc(chave).get();
-      if (doc.exists) {
-        const horarios = doc.data().horarios || [];
-        const novos = horarios.filter(function (item) {
-          return item !== horario;
-        });
-        if (novos.length === 0) await collection.doc(chave).delete();
-        else await collection.doc(chave).set({ horarios: novos });
-
-        const bloqueios = parseObjectStorage(STORAGE_KEYS.bloqueios);
-        if (novos.length === 0) delete bloqueios[chave];
-        else bloqueios[chave] = novos;
-        setObjectStorage(STORAGE_KEYS.bloqueios, bloqueios);
-      }
     } catch (error) {
       console.log("Erro removerBloqueio:", error);
+      throw error;
     }
   }
 

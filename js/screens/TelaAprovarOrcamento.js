@@ -91,12 +91,7 @@
       await window.salvarChamado(chamado);
       return;
     }
-    try {
-      const raw = localStorage.getItem("@chamados");
-      const lista = raw ? JSON.parse(raw) : [];
-      lista.unshift(chamado);
-      localStorage.setItem("@chamados", JSON.stringify(lista));
-    } catch (error) {}
+    throw new Error("Serviço de chamados indisponível");
   }
 
   async function notificarAdminSafe(orcamento, dia, horario) {
@@ -167,53 +162,61 @@
 
       state.salvando = true;
       render();
+      try {
+        await atualizarOrcamentoSafe(orcamento.numero, { status: "Aprovado" });
 
-      await atualizarOrcamentoSafe(orcamento.numero, { status: "Aprovado" });
+        const chamado = {
+          numero: gerarNumeroChamado(),
+          tipos: orcamento.tipoServico ? orcamento.tipoServico.split(", ") : ["Serviço de AR"],
+          endereco: orcamento.endereco,
+          dataFormatada: formatarData(state.diaSelecionado),
+          dataChave: formatarDataChave(state.diaSelecionado),
+          horario: state.horario,
+          detalhes:
+            `Chamado gerado a partir do orçamento aprovado ${orcamento.numero}.\n` +
+            `Serviço: ${orcamento.tipoServico}\n` +
+            `Aparelho: ${orcamento.tipoAparelho}\n` +
+            `BTUs: ${orcamento.btu}\n` +
+            `Quantidade: ${orcamento.quantidade} unid.\n` +
+            (orcamento.metragem && orcamento.metragem !== "Não informado"
+              ? `Metragem: ${orcamento.metragem}\n`
+              : "") +
+            `Valor aprovado: R$ ${orcamento.valorOrcamento}\n` +
+            (orcamento.descricaoAdmin ? `Descrição: ${orcamento.descricaoAdmin}` : ""),
+          status: "Aguardando técnico",
+          cliente: orcamento.cliente,
+          clienteEmail: orcamento.clienteEmail,
+          clienteTelefone: orcamento.clienteTelefone || "",
+          observacaoTecnica: "",
+          tecnico: "",
+          dataCriacao: new Date().toLocaleDateString("pt-BR"),
+          geradoDeOrcamento: orcamento.numero,
+          tipoServico: orcamento.tipoServico,
+          tipoAparelho: orcamento.tipoAparelho,
+          btu: orcamento.btu,
+          quantidade: orcamento.quantidade,
+          metragem: orcamento.metragem,
+          valorOrcamento: orcamento.valorOrcamento,
+        };
 
-      const chamado = {
-        numero: gerarNumeroChamado(),
-        tipos: orcamento.tipoServico ? orcamento.tipoServico.split(", ") : ["Serviço de AR"],
-        endereco: orcamento.endereco,
-        dataFormatada: formatarData(state.diaSelecionado),
-        dataChave: formatarDataChave(state.diaSelecionado),
-        horario: state.horario,
-        detalhes:
-          `Chamado gerado a partir do orçamento aprovado ${orcamento.numero}.\n` +
-          `Serviço: ${orcamento.tipoServico}\n` +
-          `Aparelho: ${orcamento.tipoAparelho}\n` +
-          `BTUs: ${orcamento.btu}\n` +
-          `Quantidade: ${orcamento.quantidade} unid.\n` +
-          (orcamento.metragem && orcamento.metragem !== "Não informado"
-            ? `Metragem: ${orcamento.metragem}\n`
-            : "") +
-          `Valor aprovado: R$ ${orcamento.valorOrcamento}\n` +
-          (orcamento.descricaoAdmin ? `Descrição: ${orcamento.descricaoAdmin}` : ""),
-        status: "Aguardando técnico",
-        cliente: orcamento.cliente,
-        clienteEmail: orcamento.clienteEmail,
-        clienteTelefone: orcamento.clienteTelefone || "",
-        observacaoTecnica: "",
-        tecnico: "",
-        dataCriacao: new Date().toLocaleDateString("pt-BR"),
-        geradoDeOrcamento: orcamento.numero,
-        tipoServico: orcamento.tipoServico,
-        tipoAparelho: orcamento.tipoAparelho,
-        btu: orcamento.btu,
-        quantidade: orcamento.quantidade,
-        metragem: orcamento.metragem,
-        valorOrcamento: orcamento.valorOrcamento,
-      };
+        await salvarChamadoSafe(chamado);
+        await notificarAdminSafe(orcamento, state.diaSelecionado, state.horario);
 
-      await salvarChamadoSafe(chamado);
-      await notificarAdminSafe(orcamento, state.diaSelecionado, state.horario);
+        state.salvando = false;
+        render();
 
-      state.salvando = false;
-      render();
-
-      window.showAppAlert(
-        `Orçamento aprovado! ✅\n\nSeu chamado foi criado para ${formatarData(state.diaSelecionado)} às ${state.horario}. Acompanhe em "Meus Chamados".`
-      );
-      if (props && typeof props.setTela === "function") props.setTela("acompanharChamado");
+        window.showAppAlert(
+          `Orçamento aprovado! ✅\n\nSeu chamado foi criado para ${formatarData(state.diaSelecionado)} às ${state.horario}. Acompanhe em "Meus Chamados".`
+        );
+        if (props && typeof props.setTela === "function") props.setTela("acompanharChamado");
+      } catch (error) {
+        console.log("Erro ao aprovar orçamento:", error);
+        state.salvando = false;
+        render();
+        window.showAppAlert(
+          "Erro\nNão foi possível confirmar o chamado no Firestore após 2 minutos. Nenhum chamado foi salvo apenas local."
+        );
+      }
     }
 
     function renderDias() {
