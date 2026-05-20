@@ -138,6 +138,7 @@
         const emailNormalizado = email.toLowerCase().trim();
         let dados = null;
         let origemLocal = false;
+        let erroRemoto = null;
 
         if (window.db && typeof window.db.collection === "function") {
           try {
@@ -151,6 +152,7 @@
               dados = doc.data();
             }
           } catch (error) {
+            erroRemoto = error;
             console.log("Login remoto indisponível, tentando fallback local:", error);
           }
         }
@@ -171,6 +173,15 @@
         }
 
         if (!dados) {
+          const codigoErroRemoto = String((erroRemoto && erroRemoto.code) || "").toLowerCase();
+          if (codigoErroRemoto.includes("permission-denied")) {
+            window.showAppAlert(
+              "Erro\nO Firestore recusou a leitura de clientes (permission-denied). Verifique as regras da coleção clientes."
+            );
+            btnEntrar.disabled = false;
+            btnEntrar.textContent = "❄ Entrar";
+            return;
+          }
           window.showAppAlert("Erro ❄\nE-mail não encontrado.");
           btnEntrar.disabled = false;
           btnEntrar.textContent = "❄ Entrar";
