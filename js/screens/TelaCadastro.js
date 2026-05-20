@@ -3,6 +3,23 @@
 (function () {
   const CLIENTES_STORAGE_KEY = "@clientes";
 
+  function criarErroFirestoreIndisponivel() {
+    const error = new Error("Firestore indisponível");
+    error.code = "unavailable";
+    return error;
+  }
+
+  async function executarComRetryFirestore(operacao) {
+    if (typeof window.runFirestoreWithRetry === "function") {
+      return window.runFirestoreWithRetry(operacao, {
+        maxAttempts: 0,
+        initialDelayMs: 1000,
+        maxDelayMs: 7000,
+      });
+    }
+    return operacao();
+  }
+
   function getClientesLocais() {
     try {
       const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
@@ -135,19 +152,22 @@
         const existeLocal = clientesLocais.some(function (item) {
           return String(item && item.email ? item.email : "").toLowerCase() === emailNormalizado;
         });
-        let existeRemoto = false;
-        const dbDisponivel = !!(window.db && typeof window.db.collection === "function");
-
-        if (dbDisponivel) {
-          try {
-            const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
-            existeRemoto = !!(doc && doc.exists);
-          } catch (error) {
-            console.log("Não foi possível validar cliente no Firestore antes do cadastro:", error);
-          }
+        if (existeLocal) {
+          window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
+          btnCadastrar.disabled = false;
+          btnCadastrar.textContent = "Cadastrar";
+          return;
         }
 
-        if (existeLocal || existeRemoto) {
+        const docExistente = await executarComRetryFirestore(async function () {
+          if (!window.db || typeof window.db.collection !== "function") {
+            throw criarErroFirestoreIndisponivel();
+          }
+          return window.db.collection("clientes").doc(emailNormalizado).get();
+        });
+        const existeRemoto = !!(docExistente && docExistente.exists);
+
+        if (existeRemoto) {
           window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
           btnCadastrar.disabled = false;
           btnCadastrar.textContent = "Cadastrar";
@@ -165,15 +185,12 @@
           token: "",
         };
 
-        let salvoNoFirestore = false;
-        if (dbDisponivel) {
-          try {
-            await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
-            salvoNoFirestore = true;
-          } catch (error) {
-            console.log("Falha ao salvar no Firestore, mantendo cadastro local:", error);
+        await executarComRetryFirestore(async function () {
+          if (!window.db || typeof window.db.collection !== "function") {
+            throw criarErroFirestoreIndisponivel();
           }
-        }
+          await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+        });
 
         upsertClienteLocal(novoUsuario);
         localStorage.setItem("@usuario", JSON.stringify(novoUsuario));
@@ -189,12 +206,6 @@
 
         if (props && typeof props.setTela === "function") {
           props.setTela("principal");
-        }
-
-        if (dbDisponivel && !salvoNoFirestore) {
-          window.showAppAlert(
-            "Conta criada localmente, mas não foi possível sincronizar com o banco agora.\nTente novamente com internet estável para sincronizar."
-          );
         }
       } catch (error) {
         console.log("Erro cadastro:", error);

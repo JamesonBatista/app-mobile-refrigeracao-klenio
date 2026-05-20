@@ -149,17 +149,21 @@
 
       const bloqueados = bloqueiosDia();
       const jaBloqueado = bloqueados.includes(horario);
-      if (jaBloqueado) {
-        await removerBloqueioSafe(chave, horario);
-        updateBloqueioState(
-          state,
-          chave,
-          bloqueados.filter((item) => item !== horario)
-        );
-      } else {
-        const atualizados = [...bloqueados, horario];
-        await salvarBloqueioSafe(chave, atualizados);
-        updateBloqueioState(state, chave, atualizados);
+      try {
+        if (jaBloqueado) {
+          await removerBloqueioSafe(chave, horario);
+          updateBloqueioState(
+            state,
+            chave,
+            bloqueados.filter((item) => item !== horario)
+          );
+        } else {
+          const atualizados = [...bloqueados, horario];
+          await salvarBloqueioSafe(chave, atualizados);
+          updateBloqueioState(state, chave, atualizados);
+        }
+      } catch (error) {
+        window.showAppAlert("Não foi possível sincronizar o bloqueio com o Firestore.");
       }
 
       state.salvando = false;
@@ -173,9 +177,13 @@
       if (diaCompleto()) {
         state.salvando = true;
         render();
-        await removerBloqueioSafe(chave, "DIA_COMPLETO");
-        const atualizados = bloqueiosDia().filter((item) => item !== "DIA_COMPLETO");
-        updateBloqueioState(state, chave, atualizados);
+        try {
+          await removerBloqueioSafe(chave, "DIA_COMPLETO");
+          const atualizados = bloqueiosDia().filter((item) => item !== "DIA_COMPLETO");
+          updateBloqueioState(state, chave, atualizados);
+        } catch (error) {
+          window.showAppAlert("Não foi possível sincronizar o desbloqueio com o Firestore.");
+        }
         state.salvando = false;
         render();
         return;
@@ -186,8 +194,12 @@
 
       state.salvando = true;
       render();
-      await salvarBloqueioSafe(chave, ["DIA_COMPLETO"]);
-      updateBloqueioState(state, chave, ["DIA_COMPLETO"]);
+      try {
+        await salvarBloqueioSafe(chave, ["DIA_COMPLETO"]);
+        updateBloqueioState(state, chave, ["DIA_COMPLETO"]);
+      } catch (error) {
+        window.showAppAlert("Não foi possível sincronizar o bloqueio com o Firestore.");
+      }
       state.salvando = false;
       render();
     }

@@ -3,6 +3,23 @@
 (function () {
   const CLIENTES_STORAGE_KEY = "@clientes";
 
+  function criarErroFirestoreIndisponivel() {
+    const error = new Error("Firestore indisponível");
+    error.code = "unavailable";
+    return error;
+  }
+
+  async function executarLeituraFirestoreComRetry(operacao) {
+    if (typeof window.runFirestoreWithRetry === "function") {
+      return window.runFirestoreWithRetry(operacao, {
+        maxAttempts: 8,
+        initialDelayMs: 800,
+        maxDelayMs: 4000,
+      });
+    }
+    return operacao();
+  }
+
   function getClientesLocais() {
     try {
       const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
@@ -125,7 +142,12 @@
 
         if (window.db && typeof window.db.collection === "function") {
           try {
-            const doc = await window.db.collection("clientes").doc(emailNormalizado).get();
+            const doc = await executarLeituraFirestoreComRetry(async function () {
+              if (!window.db || typeof window.db.collection !== "function") {
+                throw criarErroFirestoreIndisponivel();
+              }
+              return window.db.collection("clientes").doc(emailNormalizado).get();
+            });
             if (doc && doc.exists) {
               dados = doc.data();
             }
@@ -193,11 +215,26 @@
           localStorage.setItem(CLIENTES_STORAGE_KEY, JSON.stringify(lista));
 
           if (window.db && typeof window.db.collection === "function") {
-            try {
-              await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });
-            } catch (syncError) {
-              console.log("Falha ao sincronizar cliente local com Firestore no login:", syncError);
-            }
+            (async function () {
+              try {
+                if (typeof window.runFirestoreWithRetry === "function") {
+                  await window.runFirestoreWithRetry(async function () {
+                    if (!window.db || typeof window.db.collection !== "function") {
+                      throw criarErroFirestoreIndisponivel();
+                    }
+                    await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });
+                  }, {
+                    maxAttempts: 0,
+                    initialDelayMs: 1200,
+                    maxDelayMs: 7000,
+                  });
+                } else {
+                  await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });
+                }
+              } catch (syncError) {
+                console.log("Falha ao sincronizar cliente local com Firestore no login:", syncError);
+              }
+            })();
           }
         }
 
