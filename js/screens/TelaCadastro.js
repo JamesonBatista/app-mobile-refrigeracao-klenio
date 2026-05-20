@@ -12,9 +12,8 @@
   async function executarComRetryFirestore(operacao) {
     if (typeof window.runFirestoreWithRetry === "function") {
       return window.runFirestoreWithRetry(operacao, {
-        maxAttempts: 0,
-        initialDelayMs: 1000,
-        maxDelayMs: 7000,
+        retryEveryMs: 10000,
+        retryForMs: 120000,
       });
     }
     return operacao();
@@ -148,17 +147,6 @@
 
       try {
         const emailNormalizado = email.trim().toLowerCase();
-        const clientesLocais = getClientesLocais();
-        const existeLocal = clientesLocais.some(function (item) {
-          return String(item && item.email ? item.email : "").toLowerCase() === emailNormalizado;
-        });
-        if (existeLocal) {
-          window.showAppAlert("Atenção\nEste e-mail já está cadastrado.");
-          btnCadastrar.disabled = false;
-          btnCadastrar.textContent = "Cadastrar";
-          return;
-        }
-
         const docExistente = await executarComRetryFirestore(async function () {
           if (!window.db || typeof window.db.collection !== "function") {
             throw criarErroFirestoreIndisponivel();
@@ -209,7 +197,9 @@
         }
       } catch (error) {
         console.log("Erro cadastro:", error);
-        window.showAppAlert("Erro\nNão foi possível realizar o cadastro. Tente novamente.");
+        window.showAppAlert(
+          "Erro\nNão foi possível conectar ao Firestore após 2 minutos. O cadastro não foi salvo localmente. Tente novamente com internet."
+        );
       }
 
       btnCadastrar.disabled = false;

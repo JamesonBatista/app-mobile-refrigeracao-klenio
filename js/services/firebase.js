@@ -36,9 +36,14 @@
 
   async function runFirestoreWithRetry(operation, options) {
     const opts = options && typeof options === "object" ? options : {};
-    const maxAttempts = Number.isFinite(opts.maxAttempts) ? Math.max(0, opts.maxAttempts) : 0;
-    let delayMs = Number.isFinite(opts.initialDelayMs) ? Math.max(300, opts.initialDelayMs) : 1200;
-    const maxDelayMs = Number.isFinite(opts.maxDelayMs) ? Math.max(600, opts.maxDelayMs) : 8000;
+    const retryEveryMs = Number.isFinite(opts.retryEveryMs)
+      ? Math.max(1000, opts.retryEveryMs)
+      : Number.isFinite(opts.initialDelayMs)
+        ? Math.max(1000, opts.initialDelayMs)
+        : 10000;
+    const retryForMs = Number.isFinite(opts.retryForMs) ? Math.max(retryEveryMs, opts.retryForMs) : 120000;
+    const maxAttempts = Number.isFinite(opts.maxAttempts) ? Math.max(0, Math.floor(opts.maxAttempts)) : 0;
+    const startedAt = Date.now();
     let attempts = 0;
 
     while (true) {
@@ -52,10 +57,13 @@
         if (maxAttempts > 0 && attempts >= maxAttempts) {
           throw error;
         }
+        const elapsedMs = Date.now() - startedAt;
+        if (elapsedMs + retryEveryMs > retryForMs) {
+          throw error;
+        }
         await new Promise(function (resolve) {
-          setTimeout(resolve, delayMs);
+          setTimeout(resolve, retryEveryMs);
         });
-        delayMs = Math.min(maxDelayMs, Math.floor(delayMs * 1.5));
       }
     }
   }

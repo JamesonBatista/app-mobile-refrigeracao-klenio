@@ -12,9 +12,8 @@
   async function executarLeituraFirestoreComRetry(operacao) {
     if (typeof window.runFirestoreWithRetry === "function") {
       return window.runFirestoreWithRetry(operacao, {
-        maxAttempts: 8,
-        initialDelayMs: 800,
-        maxDelayMs: 4000,
+        retryEveryMs: 10000,
+        retryForMs: 120000,
       });
     }
     return operacao();
@@ -224,9 +223,8 @@
                     }
                     await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });
                   }, {
-                    maxAttempts: 0,
-                    initialDelayMs: 1200,
-                    maxDelayMs: 7000,
+                    retryEveryMs: 10000,
+                    retryForMs: 120000,
                   });
                 } else {
                   await window.db.collection("clientes").doc(emailNormalizado).set(clienteLocal, { merge: true });

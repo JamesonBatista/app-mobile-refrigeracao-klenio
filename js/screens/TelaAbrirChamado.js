@@ -86,16 +86,7 @@
       await window.salvarChamado(chamado);
       return;
     }
-    const lista = (() => {
-      try {
-        const raw = localStorage.getItem("@chamados");
-        return raw ? JSON.parse(raw) : [];
-      } catch (error) {
-        return [];
-      }
-    })();
-    lista.unshift(chamado);
-    localStorage.setItem("@chamados", JSON.stringify(lista));
+    throw new Error("Serviço de chamados indisponível");
   }
 
   function escapeHtml(value) {
@@ -268,7 +259,9 @@
       } catch (error) {
         state.carregando = false;
         render();
-        window.showAppAlert("Erro\nNão foi possível abrir o chamado.");
+        window.showAppAlert(
+          "Erro\nNão foi possível confirmar o chamado no Firestore após 2 minutos. Nada foi salvo apenas local."
+        );
       }
     }
 

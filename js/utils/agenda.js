@@ -32,6 +32,8 @@
   const DB_READY_WAIT_MS = 2200;
   const DB_GET_TIMEOUT_MS = 7000;
   const REMOTE_RETRY_INTERVAL_MS = 900;
+  const FIRESTORE_RETRY_EVERY_MS = 10000;
+  const FIRESTORE_RETRY_FOR_MS = 120000;
 
   function getDbCollection(nome) {
     if (!window.db || typeof window.db.collection !== "function") return null;
@@ -56,7 +58,12 @@
 
   async function executarComRetryFirestore(operacao, options) {
     if (typeof window.runFirestoreWithRetry === "function") {
-      return window.runFirestoreWithRetry(operacao, options || {});
+      const baseOptions = options && typeof options === "object" ? options : {};
+      return window.runFirestoreWithRetry(operacao, {
+        ...baseOptions,
+        retryEveryMs: FIRESTORE_RETRY_EVERY_MS,
+        retryForMs: FIRESTORE_RETRY_FOR_MS,
+      });
     }
     return operacao();
   }
@@ -333,22 +340,22 @@
   }
 
   async function salvarChamado(chamado) {
-    const collection = getDbCollection("chamados");
-    if (!collection) {
-      upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
-      return;
-    }
     try {
-      await collection.doc(chamado.numero).set(chamado);
+      await executarComRetryFirestore(async function () {
+        const collection = getDbCollection("chamados");
+        if (!collection) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        await collection.doc(chamado.numero).set(chamado);
+      });
       upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
     } catch (error) {
       console.log("Erro salvarChamado:", error);
-      upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
+      throw error;
     }
   }
 
   async function atualizarChamado(numero, updates) {
-    updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     try {
       await executarComRetryFirestore(async function () {
         const collection = getDbCollection("chamados");
@@ -370,8 +377,10 @@
         initialDelayMs: 900,
         maxDelayMs: 7000,
       });
+      updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
     } catch (error) {
       console.log("Erro atualizarChamado:", error);
+      throw error;
     }
   }
 
