@@ -392,7 +392,9 @@
         `⏳ Em ${diasRestantes} dia${diasRestantes !== 1 ? "s" : ""}\n` +
         (state.detalhes ? `📝 Obs: ${state.detalhes}\n` : "") +
         `━━━━━━━━━━━━━━━━━━\n\n` +
-        `⚠️ *Acesse o aplicativo em Programado pelo Suporte e aceite o agendamento para dar continuidade ao atendimento.*\n\n` +
+        `🚨 *AÇÃO OBRIGATÓRIA* 🚨\n` +
+        `*VOCÊ PRECISA ACEITAR O AGENDAMENTO NO APP PARA DAR ANDAMENTO AO CHAMADO.*\n` +
+        `➡️ Abra: *Programado pelo Suporte* e toque em *Aceitar agendamento*.\n\n` +
         `Klenio Refrigeração ❄`;
 
       state.carregando = false;
@@ -465,7 +467,9 @@
         `🕐 Horário: ${state.horario}\n` +
         (state.detalhes ? `📝 Obs: ${state.detalhes}\n` : "") +
         `━━━━━━━━━━━━━━━━━━\n\n` +
-        `⚠️ *Acesse o aplicativo em Programado pelo Suporte e aceite o agendamento para dar continuidade ao atendimento.*\n\n` +
+        `🚨 *AÇÃO OBRIGATÓRIA* 🚨\n` +
+        `*VOCÊ PRECISA ACEITAR O AGENDAMENTO NO APP PARA DAR ANDAMENTO AO CHAMADO.*\n` +
+        `➡️ Abra: *Programado pelo Suporte* e toque em *Aceitar agendamento*.\n\n` +
         `Klenio Refrigeração ❄`;
 
       state.carregando = false;
