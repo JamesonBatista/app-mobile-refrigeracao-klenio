@@ -63,6 +63,15 @@
     throw ultimoErro || criarErroFirestoreIndisponivel();
   }
 
+  async function preaquecerAntesDoCadastro() {
+    if (typeof window.preaquecerFirestore !== "function") return;
+    try {
+      await window.preaquecerFirestore({ force: true, reason: "cadastro" });
+    } catch (error) {
+      // segue fluxo normal de cadastro com retry
+    }
+  }
+
   function getClientesLocais() {
     try {
       const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
@@ -168,7 +177,25 @@
     const emailEl = root.querySelector("#cad-email");
     const senhaEl = root.querySelector("#cad-senha");
     const btnCadastrar = root.querySelector("#cad-btn-cadastrar");
+    const loadingHint = document.createElement("p");
+    loadingHint.className = "login-loading-hint";
+    loadingHint.id = "cad-loading-hint";
+    loadingHint.style.display = "none";
+    loadingHint.textContent = "Conectando ao banco... isso pode levar alguns segundos.";
+    btnCadastrar.insertAdjacentElement("afterend", loadingHint);
     criarFlocosFundo(fundos);
+
+    function setCadastroLoading(isLoading) {
+      btnCadastrar.disabled = isLoading;
+      if (isLoading) {
+        btnCadastrar.innerHTML =
+          '<span class="login-btn-inline-loading"><span class="login-spinner"></span><span>Cadastrando...</span></span>';
+        loadingHint.style.display = "block";
+        return;
+      }
+      btnCadastrar.textContent = "Cadastrar";
+      loadingHint.style.display = "none";
+    }
 
     async function handleCadastrar() {
       const nome = nomeEl.value;
@@ -186,10 +213,10 @@
         return;
       }
 
-      btnCadastrar.disabled = true;
-      btnCadastrar.textContent = "Cadastrando...";
+      setCadastroLoading(true);
 
       try {
+        await preaquecerAntesDoCadastro();
         const emailNormalizado = email.trim().toLowerCase();
         const novoUsuario = {
           nome: nome.trim(),
@@ -233,13 +260,12 @@
           );
         } else {
           window.showAppAlert(
-            "Erro\nNão foi possível conectar ao Firestore após 2 minutos. O cadastro não foi salvo localmente. Tente novamente com internet."
+            "Erro\nNão conseguimos confirmar o cadastro no Firestore agora. Verifique sua conexão e tente novamente em instantes."
           );
         }
       }
 
-      btnCadastrar.disabled = false;
-      btnCadastrar.textContent = "Cadastrar";
+      setCadastroLoading(false);
     }
 
     btnCadastrar.addEventListener("click", handleCadastrar);
