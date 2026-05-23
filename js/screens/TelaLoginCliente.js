@@ -19,6 +19,36 @@
     return operacao();
   }
 
+  async function buscarClienteRemotoPorEmail(emailNormalizado) {
+    return executarLeituraFirestoreComRetry(async function () {
+      if (!window.db || typeof window.db.collection !== "function") {
+        throw criarErroFirestoreIndisponivel();
+      }
+
+      const colecao = window.db.collection("clientes");
+
+      // 1) Caminho principal: documento com id = email
+      const docDireto = await colecao.doc(emailNormalizado).get();
+      if (docDireto && docDireto.exists) {
+        return docDireto.data();
+      }
+
+      // 2) Fallback por campo "email" (cadastros com id legado/aleatório)
+      const porCampo = await colecao.where("email", "==", emailNormalizado).limit(1).get();
+      if (porCampo && !porCampo.empty) {
+        return porCampo.docs[0].data();
+      }
+
+      // 3) Fallback robusto para inconsistência de caixa/espaço
+      const snapshot = await colecao.limit(300).get();
+      const encontrado = snapshot.docs.find(function (docItem) {
+        const dados = docItem.data();
+        return String((dados && dados.email) || "").trim().toLowerCase() === emailNormalizado;
+      });
+      return encontrado ? encontrado.data() : null;
+    });
+  }
+
   function getClientesLocais() {
     try {
       const raw = localStorage.getItem(CLIENTES_STORAGE_KEY);
@@ -142,14 +172,9 @@
 
         if (window.db && typeof window.db.collection === "function") {
           try {
-            const doc = await executarLeituraFirestoreComRetry(async function () {
-              if (!window.db || typeof window.db.collection !== "function") {
-                throw criarErroFirestoreIndisponivel();
-              }
-              return window.db.collection("clientes").doc(emailNormalizado).get();
-            });
-            if (doc && doc.exists) {
-              dados = doc.data();
+            const dadosRemotos = await buscarClienteRemotoPorEmail(emailNormalizado);
+            if (dadosRemotos) {
+              dados = dadosRemotos;
             }
           } catch (error) {
             erroRemoto = error;
@@ -187,7 +212,7 @@
           btnEntrar.textContent = "❄ Entrar";
           return;
         }
-        if (dados.senha !== senha) {
+        if (String(dados.senha || "") !== senha) {
           window.showAppAlert("Erro ❄\nSenha incorreta.");
           btnEntrar.disabled = false;
           btnEntrar.textContent = "❄ Entrar";
