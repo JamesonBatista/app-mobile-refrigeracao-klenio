@@ -45,6 +45,12 @@ const Router = (() => {
 
     State.set('tela', nomeTela);
 
+    // Ao entrar como cliente/admin, dispara um get silencioso para
+    // "acordar" a conexão do Firestore e reduzir erros no primeiro uso.
+    if ((nomeTela === 'principal' || nomeTela === 'painelAdmin') && typeof window.preaquecerFirestore === 'function') {
+      window.preaquecerFirestore({ reason: `entrada:${nomeTela}` }).catch(() => {});
+    }
+
     // Executa callback de mount se existir
     if (_onMount[nomeTela]) {
       _onMount[nomeTela]();
