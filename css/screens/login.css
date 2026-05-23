@@ -246,6 +246,26 @@
   opacity: 0.65;
 }
 
+.login-btn-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.login-btn-inline-loading .login-spinner {
+  width: 16px;
+  height: 16px;
+  margin: 0;
+}
+
+.login-loading-hint {
+  margin-top: 8px;
+  color: rgba(180, 220, 255, 0.75);
+  font-size: 12px;
+  text-align: center;
+}
+
 .login-btn-principal.is-admin {
   background: #2d1a7a;
   margin-top: 0;
