@@ -4,6 +4,8 @@
   const CLIENTES_STORAGE_KEY = "@clientes";
   const RETRY_EVERY_MS = 10000;
   const RETRY_FOR_MS = 120000;
+  const REATIVACAO_TOTAL_MS = 120000;
+  const REATIVACAO_INTERVALO_MS = 10000;
 
   function criarErroFirestoreIndisponivel() {
     const error = new Error("Firestore indisponível");
@@ -37,16 +39,20 @@
     );
   }
 
-  async function executarComRetryFirestore(operacao) {
+  async function executarComRetryFirestore(operacao, options) {
+    const opts = options && typeof options === "object" ? options : {};
     if (typeof window.runFirestoreWithRetry === "function") {
       return window.runFirestoreWithRetry(operacao, {
         retryEveryMs: RETRY_EVERY_MS,
         retryForMs: RETRY_FOR_MS,
+        ...opts,
       });
     }
+    const retryEveryMs = Number.isFinite(opts.retryEveryMs) ? Math.max(1000, opts.retryEveryMs) : RETRY_EVERY_MS;
+    const retryForMs = Number.isFinite(opts.retryForMs) ? Math.max(retryEveryMs, opts.retryForMs) : RETRY_FOR_MS;
     const iniciouEm = Date.now();
     let ultimoErro = null;
-    while (Date.now() - iniciouEm <= RETRY_FOR_MS) {
+    while (Date.now() - iniciouEm <= retryForMs) {
       try {
         return await operacao();
       } catch (error) {
@@ -54,10 +60,10 @@
         if (!isErroRetryavel(error)) {
           throw error;
         }
-        if (Date.now() - iniciouEm + RETRY_EVERY_MS > RETRY_FOR_MS) {
+        if (Date.now() - iniciouEm + retryEveryMs > retryForMs) {
           break;
         }
-        await delay(RETRY_EVERY_MS);
+        await delay(retryEveryMs);
       }
     }
     throw ultimoErro || criarErroFirestoreIndisponivel();
@@ -69,6 +75,23 @@
       await window.preaquecerFirestore({ force: true, reason: "cadastro" });
     } catch (error) {
       // segue fluxo normal de cadastro com retry
+    }
+  }
+
+  async function reativarSistemaComContagem(onTick) {
+    if (typeof window.reativarFirestoreComContagem !== "function") {
+      return { ok: false, attempts: 0 };
+    }
+    try {
+      const resultado = await window.reativarFirestoreComContagem({
+        totalMs: REATIVACAO_TOTAL_MS,
+        retryEveryMs: REATIVACAO_INTERVALO_MS,
+        reason: "cadastro",
+        onTick,
+      });
+      return resultado && typeof resultado === "object" ? resultado : { ok: false, attempts: 0 };
+    } catch (error) {
+      return { ok: false, attempts: 0, error };
     }
   }
 
@@ -185,16 +208,53 @@
     btnCadastrar.insertAdjacentElement("afterend", loadingHint);
     criarFlocosFundo(fundos);
 
-    function setCadastroLoading(isLoading) {
-      btnCadastrar.disabled = isLoading;
-      if (isLoading) {
-        btnCadastrar.innerHTML =
-          '<span class="login-btn-inline-loading"><span class="login-spinner"></span><span>Cadastrando...</span></span>';
-        loadingHint.style.display = "block";
+    const estadoLoading = {
+      ativo: false,
+      reativando: false,
+      segundos: Math.ceil(REATIVACAO_TOTAL_MS / 1000),
+      tentativas: 0,
+    };
+
+    function formatarTempoRestante(totalSegundos) {
+      const segundos = Math.max(0, Number(totalSegundos) || 0);
+      const mm = String(Math.floor(segundos / 60)).padStart(2, "0");
+      const ss = String(segundos % 60).padStart(2, "0");
+      return `${mm}:${ss}`;
+    }
+
+    function renderCadastroLoading() {
+      btnCadastrar.disabled = estadoLoading.ativo;
+      if (!estadoLoading.ativo) {
+        btnCadastrar.textContent = "Cadastrar";
+        loadingHint.style.display = "none";
         return;
       }
-      btnCadastrar.textContent = "Cadastrar";
-      loadingHint.style.display = "none";
+
+      const textoBotao = estadoLoading.reativando ? "Reativando sistema..." : "Cadastrando...";
+      btnCadastrar.innerHTML = `<span class="login-btn-inline-loading"><span class="login-spinner"></span><span>${textoBotao}</span></span>`;
+      loadingHint.style.display = "block";
+      if (estadoLoading.reativando) {
+        loadingHint.textContent =
+          `Problemas de instabilidade de sistema, estamos reativando (${formatarTempoRestante(estadoLoading.segundos)}). ` +
+          `Tentativas: ${estadoLoading.tentativas}`;
+      } else {
+        loadingHint.textContent = "Conectando ao banco... isso pode levar alguns segundos.";
+      }
+    }
+
+    function setCadastroLoading(isLoading, options) {
+      const opts = options && typeof options === "object" ? options : {};
+      estadoLoading.ativo = !!isLoading;
+      if (!isLoading) {
+        estadoLoading.reativando = false;
+        estadoLoading.segundos = Math.ceil(REATIVACAO_TOTAL_MS / 1000);
+        estadoLoading.tentativas = 0;
+      } else {
+        estadoLoading.reativando = !!opts.reativando;
+        if (Number.isFinite(opts.segundos)) estadoLoading.segundos = Math.max(0, Math.floor(opts.segundos));
+        if (Number.isFinite(opts.tentativas)) estadoLoading.tentativas = Math.max(0, Math.floor(opts.tentativas));
+      }
+      renderCadastroLoading();
     }
 
     async function handleCadastrar() {
@@ -229,12 +289,55 @@
           token: "",
         };
 
-        await executarComRetryFirestore(async function () {
-          if (!window.db || typeof window.db.collection !== "function") {
-            throw criarErroFirestoreIndisponivel();
+        try {
+          await executarComRetryFirestore(
+            async function () {
+              if (!window.db || typeof window.db.collection !== "function") {
+                throw criarErroFirestoreIndisponivel();
+              }
+              await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+            },
+            {
+              retryEveryMs: 1000,
+              retryForMs: 1000,
+            }
+          );
+        } catch (errorInicial) {
+          const codeInicial = String((errorInicial && errorInicial.code) || "").toLowerCase();
+          const deveTentarReativar = isErroRetryavel(errorInicial) || codeInicial.includes("failed-precondition");
+          if (!deveTentarReativar) throw errorInicial;
+
+          setCadastroLoading(true, {
+            reativando: true,
+            segundos: Math.ceil(REATIVACAO_TOTAL_MS / 1000),
+            tentativas: 0,
+          });
+
+          const resultadoReativacao = await reativarSistemaComContagem(function (info) {
+            setCadastroLoading(true, {
+              reativando: true,
+              segundos: Number(info && info.remainingSeconds) || 0,
+              tentativas: Number(info && info.attempts) || 0,
+            });
+          });
+
+          if (!resultadoReativacao || !resultadoReativacao.ok) {
+            throw errorInicial;
           }
-          await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
-        });
+
+          await executarComRetryFirestore(
+            async function () {
+              if (!window.db || typeof window.db.collection !== "function") {
+                throw criarErroFirestoreIndisponivel();
+              }
+              await window.db.collection("clientes").doc(emailNormalizado).set(novoUsuario);
+            },
+            {
+              retryEveryMs: 2000,
+              retryForMs: 8000,
+            }
+          );
+        }
 
         upsertClienteLocal(novoUsuario);
         localStorage.setItem("@usuario", JSON.stringify(novoUsuario));

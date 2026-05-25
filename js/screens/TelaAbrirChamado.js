@@ -23,6 +23,8 @@
   ];
   const MAX_FOTO_BYTES = 220 * 1024;
   const MAX_CHAMADO_BYTES = 900 * 1024;
+  const REATIVACAO_TOTAL_MS = 120000;
+  const REATIVACAO_INTERVALO_MS = 10000;
 
   function criarFlocosFundo(container, prefixoClasse) {
     container.innerHTML = "";
@@ -83,12 +85,35 @@
     return isSabado(data) ? HORARIOS_SABADO_PADRAO : HORARIOS_SEMANA_PADRAO;
   }
 
-  async function salvarChamadoSafe(chamado) {
+  async function salvarChamadoSafe(chamado, options) {
     if (typeof window.salvarChamado === "function") {
-      await window.salvarChamado(chamado);
+      await window.salvarChamado(chamado, options);
       return;
     }
     throw new Error("Serviço de chamados indisponível");
+  }
+
+  function isErroConexaoFirestore(error) {
+    if (typeof window.isFirestoreRetryableError === "function") {
+      return !!window.isFirestoreRetryableError(error);
+    }
+    const code = String((error && error.code) || "").toLowerCase();
+    return (
+      code.includes("unavailable") ||
+      code.includes("deadline-exceeded") ||
+      code.includes("resource-exhausted") ||
+      code.includes("internal") ||
+      code.includes("aborted") ||
+      code.includes("cancelled") ||
+      code.includes("network")
+    );
+  }
+
+  function formatarTempoRestante(totalSegundos) {
+    const segundos = Math.max(0, Number(totalSegundos) || 0);
+    const mm = String(Math.floor(segundos / 60)).padStart(2, "0");
+    const ss = String(segundos % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
   }
 
   function escapeHtml(value) {
@@ -195,6 +220,9 @@
       carregando: false,
       carregandoHorarios: false,
       diasLotados: {},
+      reativandoSistema: false,
+      reativacaoSegundos: Math.ceil(REATIVACAO_TOTAL_MS / 1000),
+      reativacaoTentativas: 0,
     };
 
     async function verificarDiasLotados() {
@@ -256,6 +284,36 @@
       state.fotos = state.fotos.filter((_, i) => i !== index);
       if (state.fotoExpandida === foto?.uri) state.fotoExpandida = null;
       render();
+    }
+
+    async function executarReativacaoSistema() {
+      if (typeof window.reativarFirestoreComContagem !== "function") {
+        return { ok: false, attempts: 0 };
+      }
+
+      state.reativandoSistema = true;
+      state.reativacaoSegundos = Math.ceil(REATIVACAO_TOTAL_MS / 1000);
+      state.reativacaoTentativas = 0;
+      render();
+
+      try {
+        const resultado = await window.reativarFirestoreComContagem({
+          totalMs: REATIVACAO_TOTAL_MS,
+          retryEveryMs: REATIVACAO_INTERVALO_MS,
+          reason: "abrir-chamado",
+          onTick: function (info) {
+            state.reativacaoSegundos = Number(info && info.remainingSeconds) || 0;
+            state.reativacaoTentativas = Number(info && info.attempts) || 0;
+            render();
+          },
+        });
+        return resultado && typeof resultado === "object" ? resultado : { ok: false, attempts: 0 };
+      } catch (error) {
+        return { ok: false, attempts: state.reativacaoTentativas || 0, error };
+      } finally {
+        state.reativandoSistema = false;
+        render();
+      }
     }
 
     async function handleAbrirChamado() {
@@ -329,7 +387,31 @@
           throw Object.assign(new Error("payload-too-large"), { code: "invalid-argument" });
         }
 
-        await salvarChamadoSafe(chamado);
+        try {
+          await salvarChamadoSafe(chamado, {
+            maxAttempts: 1,
+            retryEveryMs: 1000,
+            retryForMs: 1000,
+          });
+        } catch (errorInicial) {
+          const codeInicial = String((errorInicial && errorInicial.code) || "").toLowerCase();
+          const deveTentarReativar = isErroConexaoFirestore(errorInicial) || codeInicial.includes("failed-precondition");
+          if (!deveTentarReativar) {
+            throw errorInicial;
+          }
+
+          const resultadoReativacao = await executarReativacaoSistema();
+          if (!resultadoReativacao || !resultadoReativacao.ok) {
+            throw errorInicial;
+          }
+
+          await salvarChamadoSafe(chamado, {
+            maxAttempts: 2,
+            retryEveryMs: 2000,
+            retryForMs: 8000,
+          });
+        }
+
         state.carregando = false;
         render();
         window.showAppAlert('Chamado aberto! ❄\nSeu chamado foi enviado. Acompanhe em "Acompanhar Chamado".');
@@ -345,11 +427,28 @@
           return;
         }
         if (code.includes("failed-precondition")) {
-          window.showAppAlert("Erro\nServiço temporariamente indisponível. Tente novamente em instantes.");
+          window.showAppAlert(
+            "Erro\nProblemas de instabilidade de sistema, estamos reativando. Tente novamente em instantes."
+          );
           return;
         }
         window.showAppAlert("Erro\nNão foi possível concluir seu chamado agora. Tente novamente em instantes.");
       }
+    }
+
+    function renderModalReativacao() {
+      if (!state.reativandoSistema) return "";
+      return `
+        <div class="ab-reativacao-overlay">
+          <div class="ab-reativacao-card">
+            <div class="ch-spinner"></div>
+            <h3>Problemas de instabilidade de sistema, estamos reativando</h3>
+            <p class="ab-reativacao-tempo">${formatarTempoRestante(state.reativacaoSegundos)}</p>
+            <p class="ab-reativacao-sub">Tentativas automáticas: ${state.reativacaoTentativas}</p>
+            <p class="ab-reativacao-sub">Aguarde enquanto concluímos a reconexão.</p>
+          </div>
+        </div>
+      `;
     }
 
     function renderTipos() {
@@ -665,7 +764,9 @@
             <button class="ch-btn-main" id="ab-abrir-chamado" type="button" ${state.carregando ? "disabled" : ""}>
               ${
                 state.carregando
-                  ? '<span class="ch-btn-inline-loading"><span class="ch-spinner"></span><span>Abrindo chamado...</span></span>'
+                  ? `<span class="ch-btn-inline-loading"><span class="ch-spinner"></span><span>${
+                      state.reativandoSistema ? "Reativando sistema..." : "Abrindo chamado..."
+                    }</span></span>`
                   : "🔧 Abrir Chamado"
               }
             </button>
@@ -674,6 +775,7 @@
           </div>
 
           ${renderModalFoto()}
+          ${renderModalReativacao()}
         </section>
       `;
 
