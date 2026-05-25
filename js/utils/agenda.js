@@ -622,7 +622,9 @@
     });
   }
 
-  async function getHorariosDisponiveis(data) {
+  async function getHorariosDisponiveis(data, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const ignorarBloqueios = !!(opts.ignorarBloqueios || opts.isAdmin);
     const chave = formatarDataChave(data);
     const horariosDia = getHorariosDoDia(data);
     const maxDia = getMaxDia(data);
@@ -673,7 +675,7 @@
       programadosDia = programadosDia.filter(statusOcupaHorario);
 
       const totalOcupacoes = chamadosDia.length + programadosDia.length;
-      if (bloqueiosDia.includes("DIA_COMPLETO") || totalOcupacoes >= maxDia) return [];
+      if ((!ignorarBloqueios && bloqueiosDia.includes("DIA_COMPLETO")) || totalOcupacoes >= maxDia) return [];
 
       return horariosDia.filter(function (horario) {
         const totalChamadosNoHorario = chamadosDia.reduce(function (total, item) {
@@ -683,7 +685,7 @@
           return total + (item.horario === horario ? 1 : 0);
         }, 0);
         const totalNoHorario = totalChamadosNoHorario + totalProgramadosNoHorario;
-        const bloqueado = bloqueiosDia.includes(horario);
+        const bloqueado = !ignorarBloqueios && bloqueiosDia.includes(horario);
         let jaPassou = false;
         if (hoje) {
           const inicioHorario = getHoraInicio(horario);

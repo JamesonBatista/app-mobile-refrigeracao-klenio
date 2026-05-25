@@ -94,7 +94,7 @@
 
   async function getHorariosDisponiveisSafe(data) {
     if (typeof window.getHorariosDisponiveis === "function") {
-      return window.getHorariosDisponiveis(data);
+      return window.getHorariosDisponiveis(data, { ignorarBloqueios: true });
     }
     return isSabadoSafe(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
   }
