@@ -21,6 +21,8 @@
     "09:00 às 11:00",
     "11:30 às 13:00",
   ];
+  const MAX_FOTO_BYTES = 220 * 1024;
+  const MAX_CHAMADO_BYTES = 900 * 1024;
 
   function criarFlocosFundo(container, prefixoClasse) {
     container.innerHTML = "";
@@ -111,6 +113,70 @@
     });
   }
 
+  function getBytesFromText(value) {
+    try {
+      return new Blob([String(value || "")]).size;
+    } catch (error) {
+      return String(value || "").length;
+    }
+  }
+
+  function getChamadoPayloadBytes(chamado) {
+    try {
+      return getBytesFromText(JSON.stringify(chamado || {}));
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  async function converterImagemComLimite(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      return lerArquivoComoDataUrl(file);
+    }
+
+    let objectUrl = "";
+    try {
+      objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise(function (resolve, reject) {
+        img.onload = function () {
+          resolve();
+        };
+        img.onerror = function () {
+          reject(new Error("Falha ao carregar imagem"));
+        };
+        img.src = objectUrl;
+      });
+
+      const maxDim = 1280;
+      const maior = Math.max(img.width, img.height) || 1;
+      const escala = Math.min(1, maxDim / maior);
+      const largura = Math.max(1, Math.round(img.width * escala));
+      const altura = Math.max(1, Math.round(img.height * escala));
+      const canvas = document.createElement("canvas");
+      canvas.width = largura;
+      canvas.height = altura;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return lerArquivoComoDataUrl(file);
+      ctx.drawImage(img, 0, 0, largura, altura);
+
+      const qualidades = [0.78, 0.68, 0.58, 0.48];
+      let melhor = canvas.toDataURL("image/jpeg", qualidades[qualidades.length - 1]);
+      for (const qualidade of qualidades) {
+        const tentativa = canvas.toDataURL("image/jpeg", qualidade);
+        melhor = tentativa;
+        if (getBytesFromText(tentativa) <= MAX_FOTO_BYTES) {
+          return tentativa;
+        }
+      }
+      return melhor;
+    } catch (error) {
+      return lerArquivoComoDataUrl(file);
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
+  }
+
   function renderTelaAbrirChamado(root, props) {
     const usuarioLogado = props && props.usuarioLogado ? props.usuarioLogado : {};
     const state = {
@@ -172,7 +238,7 @@
       try {
         const imagens = await Promise.all(
           selecionados.map(async function (file) {
-            const uri = await lerArquivoComoDataUrl(file);
+            const uri = await converterImagemComLimite(file);
             return { uri, nome: file.name || "foto" };
           })
         );
@@ -251,6 +317,18 @@
       };
 
       try {
+        if (typeof window.preaquecerFirestore === "function") {
+          await window.preaquecerFirestore({ force: true, reason: "abrir-chamado" });
+        }
+        if (!window.db || typeof window.db.collection !== "function") {
+          throw Object.assign(new Error("servico-indisponivel"), { code: "failed-precondition" });
+        }
+
+        const payloadBytes = getChamadoPayloadBytes(chamado);
+        if (payloadBytes > MAX_CHAMADO_BYTES) {
+          throw Object.assign(new Error("payload-too-large"), { code: "invalid-argument" });
+        }
+
         await salvarChamadoSafe(chamado);
         state.carregando = false;
         render();
@@ -259,9 +337,18 @@
       } catch (error) {
         state.carregando = false;
         render();
-        window.showAppAlert(
-          "Erro\nNão foi possível confirmar o chamado no Firestore após 2 minutos. Nada foi salvo apenas local."
-        );
+        const code = String((error && error.code) || "").toLowerCase();
+        if (code.includes("invalid-argument") || code.includes("resource-exhausted")) {
+          window.showAppAlert(
+            "Erro\nNão foi possível enviar o chamado com as fotos selecionadas. Tente com menos fotos ou imagens menores."
+          );
+          return;
+        }
+        if (code.includes("failed-precondition")) {
+          window.showAppAlert("Erro\nServiço temporariamente indisponível. Tente novamente em instantes.");
+          return;
+        }
+        window.showAppAlert("Erro\nNão foi possível concluir seu chamado agora. Tente novamente em instantes.");
       }
     }
 

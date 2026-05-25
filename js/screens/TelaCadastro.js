@@ -256,11 +256,11 @@
         const code = String((error && error.code) || "").toLowerCase();
         if (code.includes("permission-denied")) {
           window.showAppAlert(
-            "Erro\nO Firestore recusou a operação (permission-denied). Verifique as regras da coleção clientes."
+            "Erro\nNão foi possível concluir o cadastro agora. Tente novamente em instantes."
           );
         } else {
           window.showAppAlert(
-            "Erro\nNão conseguimos confirmar o cadastro no Firestore agora. Verifique sua conexão e tente novamente em instantes."
+            "Erro\nNão conseguimos concluir seu cadastro agora. Verifique sua conexão e tente novamente."
           );
         }
       }

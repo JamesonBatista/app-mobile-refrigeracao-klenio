@@ -201,7 +201,7 @@
           const codigoErroRemoto = String((erroRemoto && erroRemoto.code) || "").toLowerCase();
           if (codigoErroRemoto.includes("permission-denied")) {
             window.showAppAlert(
-              "Erro\nO Firestore recusou a leitura de clientes (permission-denied). Verifique as regras da coleção clientes."
+              "Erro\nNão foi possível validar seu cadastro agora. Tente novamente em instantes."
             );
             btnEntrar.disabled = false;
             btnEntrar.textContent = "❄ Entrar";
