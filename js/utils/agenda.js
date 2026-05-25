@@ -17,9 +17,9 @@
   ];
 
   const HORARIOS_SABADO = ["09:00 às 11:00", "11:30 às 13:00"];
-
-  const MAX_POR_DIA = 4;
-  const MAX_SABADO = 2;
+  const CAPACIDADE_POR_HORARIO = 2;
+  const MAX_POR_DIA = HORARIOS_SEMANA.length * CAPACIDADE_POR_HORARIO;
+  const MAX_SABADO = HORARIOS_SABADO.length * CAPACIDADE_POR_HORARIO;
 
   const STATUS_ORDEM_CHAMADOS_CLIENTE = {
     "Aguardando técnico": 0,
@@ -295,6 +295,11 @@
 
   function getMaxDia(data) {
     return isSabado(data) ? MAX_SABADO : MAX_POR_DIA;
+  }
+
+  function statusOcupaHorario(item) {
+    const status = String((item && item.status) || "");
+    return status !== "Cancelado" && status !== "Concluído";
   }
 
   function getHoraInicio(horario) {
@@ -664,30 +669,27 @@
         bloqueiosDia = Array.isArray(bloqueios[chave]) ? bloqueios[chave] : [];
       }
 
-      chamadosDia = chamadosDia.filter(function (item) {
-        return item.status !== "Cancelado";
-      });
-      programadosDia = programadosDia.filter(function (item) {
-        return item.status !== "Cancelado";
-      });
+      chamadosDia = chamadosDia.filter(statusOcupaHorario);
+      programadosDia = programadosDia.filter(statusOcupaHorario);
 
       const totalOcupacoes = chamadosDia.length + programadosDia.length;
       if (bloqueiosDia.includes("DIA_COMPLETO") || totalOcupacoes >= maxDia) return [];
 
       return horariosDia.filter(function (horario) {
-        const ocupadoChamado = chamadosDia.some(function (item) {
-          return item.horario === horario;
-        });
-        const ocupadoProgramado = programadosDia.some(function (item) {
-          return item.horario === horario;
-        });
+        const totalChamadosNoHorario = chamadosDia.reduce(function (total, item) {
+          return total + (item.horario === horario ? 1 : 0);
+        }, 0);
+        const totalProgramadosNoHorario = programadosDia.reduce(function (total, item) {
+          return total + (item.horario === horario ? 1 : 0);
+        }, 0);
+        const totalNoHorario = totalChamadosNoHorario + totalProgramadosNoHorario;
         const bloqueado = bloqueiosDia.includes(horario);
         let jaPassou = false;
         if (hoje) {
           const inicioHorario = getHoraInicio(horario);
           jaPassou = agoraEmMinutos >= inicioHorario - 30;
         }
-        return !ocupadoChamado && !ocupadoProgramado && !bloqueado && !jaPassou;
+        return totalNoHorario < CAPACIDADE_POR_HORARIO && !bloqueado && !jaPassou;
       });
     } catch (error) {
       console.log("Erro getHorariosDisponiveis:", error);
@@ -1275,6 +1277,7 @@
   const api = {
     HORARIOS_SEMANA,
     HORARIOS_SABADO,
+    CAPACIDADE_POR_HORARIO,
     MAX_POR_DIA,
     MAX_SABADO,
     isDomingo,
