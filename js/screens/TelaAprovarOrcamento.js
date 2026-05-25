@@ -213,9 +213,7 @@
         console.log("Erro ao aprovar orçamento:", error);
         state.salvando = false;
         render();
-        window.showAppAlert(
-          "Erro\nNão foi possível confirmar o chamado no Firestore após 2 minutos. Nenhum chamado foi salvo apenas local."
-        );
+        window.showAppAlert("Erro\nNão foi possível concluir a aprovação agora. Tente novamente em instantes.");
       }
     }
 

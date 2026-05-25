@@ -60,9 +60,9 @@
     if (typeof window.runFirestoreWithRetry === "function") {
       const baseOptions = options && typeof options === "object" ? options : {};
       return window.runFirestoreWithRetry(operacao, {
-        ...baseOptions,
         retryEveryMs: FIRESTORE_RETRY_EVERY_MS,
         retryForMs: FIRESTORE_RETRY_FOR_MS,
+        ...baseOptions,
       });
     }
     return operacao();
@@ -235,19 +235,32 @@
     return `idx:${indexFallback}`;
   }
 
+  function isChamadoFicticioSistema(item) {
+    if (!item || typeof item !== "object") return false;
+    if (item.sistemaReativacao === true) return true;
+    const numero = String(item.numero || "");
+    return numero.startsWith("__reativacao_");
+  }
+
   function mergeChamadosRemotosComLocais(chamadosRemotos) {
-    const locais = parseArrayStorage(STORAGE_KEYS.chamados);
+    const locais = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
+      return !isChamadoFicticioSistema(item);
+    });
     const mapa = new Map();
 
     locais.forEach(function (item, index) {
       mapa.set(getChamadoMergeKey(item, index), item);
     });
 
-    (Array.isArray(chamadosRemotos) ? chamadosRemotos : []).forEach(function (item, index) {
-      const key = getChamadoMergeKey(item, index);
-      const atual = mapa.get(key) || {};
-      mapa.set(key, { ...atual, ...item });
-    });
+    (Array.isArray(chamadosRemotos) ? chamadosRemotos : [])
+      .filter(function (item) {
+        return !isChamadoFicticioSistema(item);
+      })
+      .forEach(function (item, index) {
+        const key = getChamadoMergeKey(item, index);
+        const atual = mapa.get(key) || {};
+        mapa.set(key, { ...atual, ...item });
+      });
 
     return Array.from(mapa.values());
   }
@@ -329,22 +342,30 @@
 
   async function carregarChamados() {
     const collection = await waitForDbCollection("chamados");
-    if (!collection) return parseArrayStorage(STORAGE_KEYS.chamados);
+    if (!collection) {
+      return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
+        return !isChamadoFicticioSistema(item);
+      });
+    }
     try {
       const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
       const listaRemota = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
+      }).filter(function (item) {
+        return !isChamadoFicticioSistema(item);
       });
       const lista = mergeChamadosRemotosComLocais(listaRemota);
       setArrayStorage(STORAGE_KEYS.chamados, lista);
       return lista;
     } catch (error) {
       console.log("Erro carregarChamados:", error);
-      return parseArrayStorage(STORAGE_KEYS.chamados);
+      return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
+        return !isChamadoFicticioSistema(item);
+      });
     }
   }
 
-  async function salvarChamado(chamado) {
+  async function salvarChamado(chamado, options) {
     try {
       await executarComRetryFirestore(async function () {
         const collection = getDbCollection("chamados");
@@ -352,7 +373,7 @@
           throw criarErroFirestoreIndisponivel();
         }
         await collection.doc(chamado.numero).set(chamado);
-      });
+      }, options);
       upsertByField(STORAGE_KEYS.chamados, "numero", chamado.numero, chamado);
     } catch (error) {
       console.log("Erro salvarChamado:", error);
@@ -479,7 +500,9 @@
       storageKey: STORAGE_KEYS.chamados,
       callback,
       localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.chamados);
+        return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
+          return !isChamadoFicticioSistema(item);
+        });
       },
       connectRemote: function () {
         const collection = getDbCollection("chamados");
@@ -487,6 +510,8 @@
         return collection.onSnapshot(function (snapshot) {
           const listaRemota = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
+          }).filter(function (item) {
+            return !isChamadoFicticioSistema(item);
           });
           const lista = mergeChamadosRemotosComLocais(listaRemota);
           setArrayStorage(STORAGE_KEYS.chamados, lista);
@@ -502,7 +527,7 @@
       callback,
       localProducer: function () {
         const lista = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-          return item && item.clienteEmail === emailCliente;
+          return item && !isChamadoFicticioSistema(item) && item.clienteEmail === emailCliente;
         });
         lista.sort(function (a, b) {
           return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
@@ -515,9 +540,13 @@
         return collection
           .where("clienteEmail", "==", emailCliente)
           .onSnapshot(function (snapshot) {
-            const lista = snapshot.docs.map(function (doc) {
-              return { id: doc.id, ...doc.data() };
-            });
+            const lista = snapshot.docs
+              .map(function (doc) {
+                return { id: doc.id, ...doc.data() };
+              })
+              .filter(function (item) {
+                return !isChamadoFicticioSistema(item);
+              });
             lista.sort(function (a, b) {
               return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
             });
@@ -655,6 +684,8 @@
 
         chamadosDia = chamadosSnap.docs.map(function (doc) {
           return doc.data();
+        }).filter(function (item) {
+          return !isChamadoFicticioSistema(item);
         });
         programadosDia = programadosSnap.docs.map(function (doc) {
           return doc.data();
@@ -662,7 +693,7 @@
         bloqueiosDia = bloqueioDoc.exists ? bloqueioDoc.data().horarios || [] : [];
       } else {
         chamadosDia = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-          return item && item.dataChave === chave;
+          return item && !isChamadoFicticioSistema(item) && item.dataChave === chave;
         });
         programadosDia = parseArrayStorage(STORAGE_KEYS.programados).filter(function (item) {
           return item && item.dataChave === chave;

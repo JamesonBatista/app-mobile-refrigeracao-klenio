@@ -163,7 +163,7 @@
           updateBloqueioState(state, chave, atualizados);
         }
       } catch (error) {
-        window.showAppAlert("Não foi possível sincronizar o bloqueio com o Firestore.");
+        window.showAppAlert("Não foi possível concluir o bloqueio agora. Tente novamente.");
       }
 
       state.salvando = false;
@@ -182,7 +182,7 @@
           const atualizados = bloqueiosDia().filter((item) => item !== "DIA_COMPLETO");
           updateBloqueioState(state, chave, atualizados);
         } catch (error) {
-          window.showAppAlert("Não foi possível sincronizar o desbloqueio com o Firestore.");
+          window.showAppAlert("Não foi possível concluir o desbloqueio agora. Tente novamente.");
         }
         state.salvando = false;
         render();
@@ -198,7 +198,7 @@
         await salvarBloqueioSafe(chave, ["DIA_COMPLETO"]);
         updateBloqueioState(state, chave, ["DIA_COMPLETO"]);
       } catch (error) {
-        window.showAppAlert("Não foi possível sincronizar o bloqueio com o Firestore.");
+        window.showAppAlert("Não foi possível concluir o bloqueio agora. Tente novamente.");
       }
       state.salvando = false;
       render();
