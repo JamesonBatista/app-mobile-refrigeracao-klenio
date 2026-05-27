@@ -1403,6 +1403,23 @@
   cursor: pointer;
 }
 
+.pa-refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.pa-refresh-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-refresh-inline-loading .ch-spinner {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
 .pa-loading,
 .pa-empty {
   text-align: center;
