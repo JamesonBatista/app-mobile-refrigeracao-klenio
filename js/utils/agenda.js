@@ -1,6 +1,7 @@
 (function () {
   const STORAGE_KEYS = {
     chamados: "@chamados",
+    historico: "@historicoChamados",
     bloqueios: "@bloqueiosAgenda",
     clientes: "@clientes",
     programados: "@programados",
@@ -139,6 +140,63 @@
     };
   }
 
+  function subscribeRemoteOnlyWithRetry(connectRemote, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const retryMs = Number.isFinite(opts.retryMs) ? Math.max(500, opts.retryMs) : 1500;
+    let stopped = false;
+    let unsubscribeRemote = null;
+    let retryTimer = null;
+
+    function clearRetry() {
+      if (!retryTimer) return;
+      clearTimeout(retryTimer);
+      retryTimer = null;
+    }
+
+    function scheduleRetry() {
+      if (stopped) return;
+      clearRetry();
+      retryTimer = setTimeout(connect, retryMs);
+    }
+
+    function onRemoteError() {
+      if (typeof unsubscribeRemote === "function") {
+        try {
+          unsubscribeRemote();
+        } catch (error) {}
+      }
+      unsubscribeRemote = null;
+      scheduleRetry();
+    }
+
+    function connect() {
+      if (stopped || unsubscribeRemote) return;
+      try {
+        const candidate = connectRemote(onRemoteError);
+        if (typeof candidate === "function") {
+          unsubscribeRemote = candidate;
+          return;
+        }
+        scheduleRetry();
+      } catch (error) {
+        scheduleRetry();
+      }
+    }
+
+    connect();
+
+    return function unsubscribeAll() {
+      stopped = true;
+      clearRetry();
+      if (typeof unsubscribeRemote === "function") {
+        try {
+          unsubscribeRemote();
+        } catch (error) {}
+      }
+      unsubscribeRemote = null;
+    };
+  }
+
   function parseArrayStorage(chave) {
     try {
       const raw = localStorage.getItem(chave);
@@ -242,6 +300,81 @@
     return numero.startsWith("__reativacao_");
   }
 
+  function isStatusFinalizadoChamado(status) {
+    return status === "Concluído" || status === "Cancelado";
+  }
+
+  function getHoraInicioMinutos(horario) {
+    if (!horario) return 0;
+    const parte = String(horario).split("às")[0].trim();
+    const [hora, minuto] = parte.split(":").map(Number);
+    return (hora || 0) * 60 + (minuto || 0);
+  }
+
+  function getDataFromChave(dataChave) {
+    if (!dataChave) return null;
+    const partes = String(dataChave).split("-");
+    if (partes.length !== 3) return null;
+    const ano = Number(partes[0]);
+    const mes = Number(partes[1]) - 1;
+    const dia = Number(partes[2]);
+    const dt = new Date(ano, mes, dia);
+    if (Number.isNaN(dt.getTime())) return null;
+    dt.setHours(0, 0, 0, 0);
+    return dt;
+  }
+
+  function getHistoricoTimestamp(item) {
+    if (!item || typeof item !== "object") return 0;
+    if (item.dataConclusaoISO) {
+      const ts = new Date(item.dataConclusaoISO).getTime();
+      if (!Number.isNaN(ts)) return ts;
+    }
+    if (item.timestamp_Concluído) {
+      const ts = new Date(item.timestamp_Concluído).getTime();
+      if (!Number.isNaN(ts)) return ts;
+    }
+    if (item.timestamp_Cancelado) {
+      const ts = new Date(item.timestamp_Cancelado).getTime();
+      if (!Number.isNaN(ts)) return ts;
+    }
+    if (item.dataChave) {
+      const dt = getDataFromChave(item.dataChave);
+      if (dt) return dt.getTime() + getHoraInicioMinutos(item.horario) * 60000;
+    }
+    if (item.dataAbertura) {
+      const partes = String(item.dataAbertura).split("/");
+      if (partes.length === 3) {
+        const dt = new Date(Number(partes[2]), Number(partes[1]) - 1, Number(partes[0]));
+        if (!Number.isNaN(dt.getTime())) return dt.getTime();
+      }
+    }
+    return 0;
+  }
+
+  function ordenarHistoricoDesc(lista) {
+    return [...(Array.isArray(lista) ? lista : [])].sort(function (a, b) {
+      return getHistoricoTimestamp(b) - getHistoricoTimestamp(a);
+    });
+  }
+
+  function upsertHistoricoLocal(item) {
+    if (!item || !item.numero) return;
+    upsertByField(STORAGE_KEYS.historico, "numero", item.numero, item);
+  }
+
+  function montarRegistroHistoricoChamado(chamado) {
+    const { iso } = getNowStr();
+    return {
+      ...(chamado || {}),
+      numero: chamado.numero,
+      statusFinal: chamado.status,
+      dataConclusaoISO: chamado.dataConclusaoISO || iso,
+      origem: "chamados",
+      arquivadoEmISO: iso,
+    };
+  }
+
   function mergeChamadosRemotosComLocais(chamadosRemotos) {
     const locais = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
       return !isChamadoFicticioSistema(item);
@@ -263,6 +396,44 @@
       });
 
     return Array.from(mapa.values());
+  }
+
+  async function arquivarChamadoFinalizado(chamado, options) {
+    if (!chamado || !chamado.numero) return;
+    if (!isStatusFinalizadoChamado(chamado.status)) return;
+
+    const registroHistorico = montarRegistroHistoricoChamado(chamado);
+    await executarComRetryFirestore(
+      async function () {
+        const collectionHistorico = getDbCollection("historico");
+        if (!collectionHistorico) {
+          throw criarErroFirestoreIndisponivel();
+        }
+        await collectionHistorico.doc(chamado.numero).set(registroHistorico, { merge: true });
+        const collectionChamados = getDbCollection("chamados");
+        if (collectionChamados) {
+          await collectionChamados.doc(chamado.numero).delete();
+        }
+      },
+      options
+    );
+
+    upsertHistoricoLocal(registroHistorico);
+    removeByField(STORAGE_KEYS.chamados, "numero", chamado.numero);
+  }
+
+  async function migrarChamadosFinalizadosNoServidor(chamadosLista, options) {
+    const finais = (Array.isArray(chamadosLista) ? chamadosLista : []).filter(function (item) {
+      return item && item.numero && isStatusFinalizadoChamado(item.status);
+    });
+    if (finais.length === 0) return [];
+    const migrados = [];
+
+    for (const item of finais) {
+      await arquivarChamadoFinalizado(item, options);
+      migrados.push(montarRegistroHistoricoChamado(item));
+    }
+    return migrados;
   }
 
   function isDomingo(data) {
@@ -340,27 +511,39 @@
     };
   }
 
-  async function carregarChamados() {
+  async function carregarChamados(options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const forceServer = !!opts.forceServer;
+    const throwOnError = !!opts.throwOnError;
     const collection = await waitForDbCollection("chamados");
     if (!collection) {
+      if (throwOnError) throw criarErroFirestoreIndisponivel();
       return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-        return !isChamadoFicticioSistema(item);
+        return !isChamadoFicticioSistema(item) && !isStatusFinalizadoChamado(item.status);
       });
     }
     try {
-      const snapshot = await withTimeout(collection.get(), DB_GET_TIMEOUT_MS);
+      const snapshot = await withTimeout(
+        forceServer ? collection.get({ source: "server" }) : collection.get(),
+        DB_GET_TIMEOUT_MS
+      );
       const listaRemota = snapshot.docs.map(function (doc) {
         return { id: doc.id, ...doc.data() };
       }).filter(function (item) {
         return !isChamadoFicticioSistema(item);
       });
+      await migrarChamadosFinalizadosNoServidor(listaRemota, opts);
       const lista = mergeChamadosRemotosComLocais(listaRemota);
-      setArrayStorage(STORAGE_KEYS.chamados, lista);
-      return lista;
+      const ativos = lista.filter(function (item) {
+        return !isStatusFinalizadoChamado(item && item.status);
+      });
+      setArrayStorage(STORAGE_KEYS.chamados, ativos);
+      return ativos;
     } catch (error) {
       console.log("Erro carregarChamados:", error);
+      if (throwOnError) throw error;
       return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-        return !isChamadoFicticioSistema(item);
+        return !isChamadoFicticioSistema(item) && !isStatusFinalizadoChamado(item.status);
       });
     }
   }
@@ -382,6 +565,12 @@
   }
 
   async function atualizarChamado(numero, updates) {
+    const listaAtual = parseArrayStorage(STORAGE_KEYS.chamados);
+    const base = listaAtual.find(function (item) {
+      return item && item.numero === numero;
+    }) || { numero };
+    const chamadoAtualizado = { ...base, ...updates, numero };
+
     try {
       await executarComRetryFirestore(async function () {
         const collection = getDbCollection("chamados");
@@ -403,7 +592,10 @@
         initialDelayMs: 900,
         maxDelayMs: 7000,
       });
-      updateByField(STORAGE_KEYS.chamados, "numero", numero, updates);
+      updateByField(STORAGE_KEYS.chamados, "numero", numero, chamadoAtualizado);
+      if (isStatusFinalizadoChamado(chamadoAtualizado.status)) {
+        await arquivarChamadoFinalizado(chamadoAtualizado);
+      }
     } catch (error) {
       console.log("Erro atualizarChamado:", error);
       throw error;
@@ -428,6 +620,11 @@
       chamado[`timestamp_${novoStatus.replace(/ /g, "_")}`] = iso;
       lista[index] = chamado;
       setArrayStorage(STORAGE_KEYS.chamados, lista);
+      if (isStatusFinalizadoChamado(novoStatus)) {
+        const historicoRegistro = montarRegistroHistoricoChamado(chamado);
+        upsertHistoricoLocal(historicoRegistro);
+        removeByField(STORAGE_KEYS.chamados, "numero", numero);
+      }
       return;
     }
 
@@ -443,6 +640,9 @@
       };
       await collection.doc(numero).update(payload);
       updateByField(STORAGE_KEYS.chamados, "numero", numero, payload);
+      if (isStatusFinalizadoChamado(novoStatus)) {
+        await arquivarChamadoFinalizado({ ...dados, numero, ...payload });
+      }
     } catch (error) {
       console.log("Erro registrarMudancaStatus:", error);
       await atualizarChamado(numero, {
@@ -461,6 +661,10 @@
     try {
       const doc = await withTimeout(collection.doc(numero).get(), DB_GET_TIMEOUT_MS);
       if (doc.exists) return { id: doc.id, ...doc.data() };
+      const collectionHistorico = await waitForDbCollection("historico");
+      if (!collectionHistorico) return null;
+      const docHistorico = await withTimeout(collectionHistorico.doc(numero).get(), DB_GET_TIMEOUT_MS);
+      if (docHistorico.exists) return { id: docHistorico.id, ...docHistorico.data() };
       return null;
     } catch (error) {
       console.log("Erro carregarChamadoPorNumero:", error);
@@ -468,91 +672,158 @@
     }
   }
 
+  async function carregarHistoricoChamados(emailCliente, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const forceServer = !!opts.forceServer;
+    const throwOnError = !!opts.throwOnError;
+    const emailNorm = normalizarEmail(emailCliente);
+    const collection = await waitForDbCollection("historico");
+
+    if (!collection) {
+      if (throwOnError) throw criarErroFirestoreIndisponivel();
+      const locais = parseArrayStorage(STORAGE_KEYS.historico);
+      const filtrados = emailNorm
+        ? locais.filter(function (item) {
+            return normalizarEmail(item && item.clienteEmail) === emailNorm;
+          })
+        : locais;
+      return ordenarHistoricoDesc(filtrados);
+    }
+
+    try {
+      let query = collection;
+      if (emailNorm && typeof collection.where === "function") {
+        query = collection.where("clienteEmail", "==", emailNorm);
+      }
+      const snapshot = await withTimeout(
+        forceServer && typeof query.get === "function"
+          ? query.get({ source: "server" })
+          : query.get(),
+        DB_GET_TIMEOUT_MS
+      );
+      const lista = snapshot.docs.map(function (doc) {
+        return { id: doc.id, ...doc.data() };
+      });
+      if (!emailNorm) {
+        setArrayStorage(STORAGE_KEYS.historico, ordenarHistoricoDesc(lista));
+      }
+      return ordenarHistoricoDesc(lista);
+    } catch (error) {
+      console.log("Erro carregarHistoricoChamados:", error);
+      if (throwOnError) throw error;
+      const locais = parseArrayStorage(STORAGE_KEYS.historico);
+      const filtrados = emailNorm
+        ? locais.filter(function (item) {
+            return normalizarEmail(item && item.clienteEmail) === emailNorm;
+          })
+        : locais;
+      return ordenarHistoricoDesc(filtrados);
+    }
+  }
+
   function ouvirChamado(numero, callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.chamados,
-      callback: function (lista) {
-        const item = Array.isArray(lista)
-          ? lista.find(function (entry) {
-              return entry && entry.numero === numero;
-            })
-          : null;
-        if (item) callback(item);
-      },
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.chamados);
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("chamados");
-        if (!collection) return null;
-        const docRef = collection.doc(numero);
-        if (!docRef || typeof docRef.onSnapshot !== "function") return null;
-        return docRef.onSnapshot(function (doc) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("chamados");
+      if (!collection) return null;
+      const docRef = collection.doc(numero);
+      if (!docRef || typeof docRef.onSnapshot !== "function") return null;
+      return docRef.onSnapshot(
+        function (doc) {
           if (!doc.exists) return;
           callback({ id: doc.id, ...doc.data() });
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
   function ouvirChamados(callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.chamados,
-      callback,
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-          return !isChamadoFicticioSistema(item);
-        });
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("chamados");
-        if (!collection || typeof collection.onSnapshot !== "function") return null;
-        return collection.onSnapshot(function (snapshot) {
-          const listaRemota = snapshot.docs.map(function (doc) {
-            return { id: doc.id, ...doc.data() };
-          }).filter(function (item) {
-            return !isChamadoFicticioSistema(item);
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("chamados");
+      if (!collection || typeof collection.onSnapshot !== "function") return null;
+      return collection.onSnapshot(
+        function (snapshot) {
+          const listaRemotaCompleta = snapshot.docs
+            .map(function (doc) {
+              return { id: doc.id, ...doc.data() };
+            })
+            .filter(function (item) {
+              return !isChamadoFicticioSistema(item);
+            });
+          const ativos = listaRemotaCompleta.filter(function (item) {
+            return !isStatusFinalizadoChamado(item.status);
           });
-          const lista = mergeChamadosRemotosComLocais(listaRemota);
-          setArrayStorage(STORAGE_KEYS.chamados, lista);
-          callback(lista);
-        });
-      },
+          const finais = listaRemotaCompleta.filter(function (item) {
+            return isStatusFinalizadoChamado(item.status);
+          });
+          if (finais.length > 0) {
+            migrarChamadosFinalizadosNoServidor(finais).catch(function () {});
+          }
+          setArrayStorage(STORAGE_KEYS.chamados, ativos);
+          callback(ativos);
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
   function ouvirChamadosCliente(emailCliente, callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.chamados,
-      callback,
-      localProducer: function () {
-        const lista = parseArrayStorage(STORAGE_KEYS.chamados).filter(function (item) {
-          return item && !isChamadoFicticioSistema(item) && item.clienteEmail === emailCliente;
-        });
-        lista.sort(function (a, b) {
-          return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
-        });
-        return lista;
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("chamados");
-        if (!collection || typeof collection.where !== "function") return null;
-        return collection
-          .where("clienteEmail", "==", emailCliente)
-          .onSnapshot(function (snapshot) {
-            const lista = snapshot.docs
-              .map(function (doc) {
-                return { id: doc.id, ...doc.data() };
-              })
-              .filter(function (item) {
-                return !isChamadoFicticioSistema(item);
-              });
-            lista.sort(function (a, b) {
-              return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("chamados");
+      if (!collection || typeof collection.where !== "function") return null;
+      return collection.where("clienteEmail", "==", emailCliente).onSnapshot(
+        function (snapshot) {
+          const lista = snapshot.docs
+            .map(function (doc) {
+              return { id: doc.id, ...doc.data() };
+            })
+            .filter(function (item) {
+              return (
+                !isChamadoFicticioSistema(item) &&
+                !isStatusFinalizadoChamado(item.status)
+              );
             });
-            callback(lista);
+          lista.sort(function (a, b) {
+            return (STATUS_ORDEM_CHAMADOS_CLIENTE[a.status] ?? 5) - (STATUS_ORDEM_CHAMADOS_CLIENTE[b.status] ?? 5);
           });
-      },
+          callback(lista);
+        },
+        function () {
+          onError();
+        }
+      );
+    });
+  }
+
+  function ouvirHistoricoChamados(callback, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const emailNorm = normalizarEmail(opts.emailCliente);
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("historico");
+      if (!collection) return null;
+      let query = collection;
+      if (emailNorm && typeof collection.where === "function") {
+        query = collection.where("clienteEmail", "==", emailNorm);
+      }
+      if (!query || typeof query.onSnapshot !== "function") return null;
+      return query.onSnapshot(
+        function (snapshot) {
+          const lista = snapshot.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          });
+          if (!emailNorm) {
+            setArrayStorage(STORAGE_KEYS.historico, ordenarHistoricoDesc(lista));
+          }
+          callback(ordenarHistoricoDesc(lista));
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
@@ -835,45 +1106,39 @@
   }
 
   function ouvirProgramados(emailCliente, callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.programados,
-      callback,
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.programados).filter(function (item) {
-          return item && item.clienteEmail === emailCliente;
-        });
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("programados");
-        if (!collection || typeof collection.where !== "function") return null;
-        return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("programados");
+      if (!collection || typeof collection.where !== "function") return null;
+      return collection.where("clienteEmail", "==", emailCliente).onSnapshot(
+        function (snapshot) {
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
           callback(lista);
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
   function ouvirTodosProgramados(callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.programados,
-      callback,
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.programados);
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("programados");
-        if (!collection || typeof collection.onSnapshot !== "function") return null;
-        return collection.onSnapshot(function (snapshot) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("programados");
+      if (!collection || typeof collection.onSnapshot !== "function") return null;
+      return collection.onSnapshot(
+        function (snapshot) {
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
           setArrayStorage(STORAGE_KEYS.programados, lista);
           callback(lista);
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
@@ -955,28 +1220,19 @@
   }
 
   function ouvirProgramado(numero, callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.programados,
-      callback: function (lista) {
-        const item = Array.isArray(lista)
-          ? lista.find(function (entry) {
-              return entry && entry.numero === numero;
-            })
-          : null;
-        if (item) callback(item);
-      },
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.programados);
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("programados");
-        if (!collection) return null;
-        const docRef = collection.doc(numero);
-        if (!docRef || typeof docRef.onSnapshot !== "function") return null;
-        return docRef.onSnapshot(function (doc) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("programados");
+      if (!collection) return null;
+      const docRef = collection.doc(numero);
+      if (!docRef || typeof docRef.onSnapshot !== "function") return null;
+      return docRef.onSnapshot(
+        function (doc) {
           if (doc.exists) callback({ id: doc.id, ...doc.data() });
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
@@ -1034,45 +1290,39 @@
   }
 
   function ouvirOrcamentosCliente(emailCliente, callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.orcamentos,
-      callback,
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.orcamentos).filter(function (item) {
-          return item && item.clienteEmail === emailCliente;
-        });
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("orcamentos");
-        if (!collection || typeof collection.where !== "function") return null;
-        return collection.where("clienteEmail", "==", emailCliente).onSnapshot(function (snapshot) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("orcamentos");
+      if (!collection || typeof collection.where !== "function") return null;
+      return collection.where("clienteEmail", "==", emailCliente).onSnapshot(
+        function (snapshot) {
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
           callback(lista);
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
   function ouvirTodosOrcamentos(callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.orcamentos,
-      callback,
-      localProducer: function () {
-        return parseArrayStorage(STORAGE_KEYS.orcamentos);
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("orcamentos");
-        if (!collection || typeof collection.onSnapshot !== "function") return null;
-        return collection.onSnapshot(function (snapshot) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("orcamentos");
+      if (!collection || typeof collection.onSnapshot !== "function") return null;
+      return collection.onSnapshot(
+        function (snapshot) {
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
           setArrayStorage(STORAGE_KEYS.orcamentos, lista);
           callback(lista);
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
@@ -1089,6 +1339,87 @@
     } catch (error) {
       console.log("Erro carregarTodosOrcamentos:", error);
       return parseArrayStorage(STORAGE_KEYS.orcamentos);
+    }
+  }
+
+  async function sincronizarPainelAdminServidor(options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const retryEveryMs = Number.isFinite(opts.retryEveryMs) ? Math.max(1000, opts.retryEveryMs) : 3000;
+    const retryForever = !!opts.retryForever;
+    const onRetry = typeof opts.onRetry === "function" ? opts.onRetry : null;
+    const shouldCancel = typeof opts.shouldCancel === "function" ? opts.shouldCancel : null;
+    let tentativas = 0;
+
+    while (true) {
+      if (shouldCancel && shouldCancel()) {
+        const cancelError = new Error("Sincronização cancelada");
+        cancelError.code = "cancelled";
+        throw cancelError;
+      }
+      try {
+        const [collectionChamados, collectionProgramados, collectionOrcamentos, collectionHistorico] =
+          await Promise.all([
+            waitForDbCollection("chamados", 12000),
+            waitForDbCollection("programados", 12000),
+            waitForDbCollection("orcamentos", 12000),
+            waitForDbCollection("historico", 12000),
+          ]);
+        if (!collectionChamados || !collectionProgramados || !collectionOrcamentos || !collectionHistorico) {
+          throw criarErroFirestoreIndisponivel();
+        }
+
+        const [chamadosSnap, programadosSnap, orcamentosSnap, historicoSnap] = await Promise.all([
+          collectionChamados.get({ source: "server" }),
+          collectionProgramados.get({ source: "server" }),
+          collectionOrcamentos.get({ source: "server" }),
+          collectionHistorico.get({ source: "server" }),
+        ]);
+
+        const chamadosRemotos = chamadosSnap.docs.map(function (doc) {
+          return { id: doc.id, ...doc.data() };
+        });
+        const historicoMigrado = await migrarChamadosFinalizadosNoServidor(chamadosRemotos, {
+          retryEveryMs,
+          retryForMs: Math.max(retryEveryMs * 2, 10000),
+        });
+
+        const historicoRemoto = ordenarHistoricoDesc(
+          historicoSnap.docs.map(function (doc) {
+            return { id: doc.id, ...doc.data() };
+          }).concat(historicoMigrado || [])
+        );
+        const chamadosAtivos = chamadosRemotos.filter(function (item) {
+          return !isStatusFinalizadoChamado(item && item.status) && !isChamadoFicticioSistema(item);
+        });
+        const programados = programadosSnap.docs.map(function (doc) {
+          return { id: doc.id, ...doc.data() };
+        });
+        const orcamentos = orcamentosSnap.docs.map(function (doc) {
+          return { id: doc.id, ...doc.data() };
+        });
+
+        setArrayStorage(STORAGE_KEYS.chamados, chamadosAtivos);
+        setArrayStorage(STORAGE_KEYS.programados, programados);
+        setArrayStorage(STORAGE_KEYS.orcamentos, orcamentos);
+        setArrayStorage(STORAGE_KEYS.historico, historicoRemoto);
+
+        return {
+          chamados: chamadosAtivos,
+          programados,
+          orcamentos,
+          historico: historicoRemoto,
+          attempts: tentativas + 1,
+        };
+      } catch (error) {
+        tentativas += 1;
+        if (!retryForever) throw error;
+        if (onRetry) {
+          try {
+            onRetry({ attempt: tentativas, error });
+          } catch (callbackError) {}
+        }
+        await delay(retryEveryMs);
+      }
     }
   }
 
@@ -1142,20 +1473,11 @@
   }
 
   function ouvirProfissionais(callback) {
-    return subscribeWithStorageFallback({
-      storageKey: STORAGE_KEYS.profissionais,
-      callback,
-      localProducer: function () {
-        const lista = parseArrayStorage(STORAGE_KEYS.profissionais);
-        lista.sort(function (a, b) {
-          return String(a.nome || "").localeCompare(String(b.nome || ""));
-        });
-        return lista;
-      },
-      connectRemote: function () {
-        const collection = getDbCollection("profissionais");
-        if (!collection || typeof collection.onSnapshot !== "function") return null;
-        return collection.onSnapshot(function (snapshot) {
+    return subscribeRemoteOnlyWithRetry(function (onError) {
+      const collection = getDbCollection("profissionais");
+      if (!collection || typeof collection.onSnapshot !== "function") return null;
+      return collection.onSnapshot(
+        function (snapshot) {
           const lista = snapshot.docs.map(function (doc) {
             return { id: doc.id, ...doc.data() };
           });
@@ -1164,8 +1486,11 @@
           });
           setArrayStorage(STORAGE_KEYS.profissionais, lista);
           callback(lista);
-        });
-      },
+        },
+        function () {
+          onError();
+        }
+      );
     });
   }
 
@@ -1329,6 +1654,8 @@
     ouvirChamado,
     ouvirChamados,
     ouvirChamadosCliente,
+    carregarHistoricoChamados,
+    ouvirHistoricoChamados,
     carregarBloqueios,
     salvarBloqueio,
     removerBloqueio,
@@ -1351,6 +1678,7 @@
     salvarOrcamento,
     atualizarOrcamento,
     carregarTodosOrcamentos,
+    sincronizarPainelAdminServidor,
     ouvirOrcamentosCliente,
     ouvirTodosOrcamentos,
     salvarProfissional,

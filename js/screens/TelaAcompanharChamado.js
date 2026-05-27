@@ -76,7 +76,27 @@
       return ordenarChamados(
         lista.filter((item) => {
           const clienteEmail = normalizarEmail(item && item.clienteEmail);
-          return clienteEmail === emailNorm;
+          const status = String((item && item.status) || "");
+          return (
+            clienteEmail === emailNorm &&
+            status !== "Concluído" &&
+            status !== "Cancelado"
+          );
+        })
+      );
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function getHistoricoLocais(email) {
+    const emailNorm = normalizarEmail(email);
+    try {
+      const raw = localStorage.getItem("@historicoChamados");
+      const lista = raw ? JSON.parse(raw) : [];
+      return ordenarChamados(
+        lista.filter((item) => {
+          return normalizarEmail(item && item.clienteEmail) === emailNorm;
         })
       );
     } catch (error) {
@@ -103,23 +123,23 @@
 
   function renderTelaAcompanharChamado(root, props) {
     const state = {
-      chamados: [],
+      chamadosAtivos: [],
+      chamadosHistorico: [],
       carregando: true,
       abaSelecionada: "ativos",
       fotoExpandida: null,
       fotosModal: null,
-      unsubscribe: null,
+      unsubscribeAtivos: null,
+      unsubscribeHistorico: null,
     };
 
     const usuarioLogado = props && props.usuarioLogado ? props.usuarioLogado : null;
 
     function chamadosFiltrados() {
       if (state.abaSelecionada === "ativos") {
-        return state.chamados.filter(
-          (c) => c.status === "Aguardando técnico" || c.status === "Aceito" || c.status === "Em atendimento"
-        );
+        return state.chamadosAtivos;
       }
-      return state.chamados.filter((c) => c.status === "Concluído" || c.status === "Cancelado");
+      return state.chamadosHistorico;
     }
 
     function statusHtml(status) {
@@ -376,31 +396,55 @@
         return;
       }
 
-      state.chamados = getChamadosLocais(usuarioLogado.email);
+      state.chamadosAtivos = getChamadosLocais(usuarioLogado.email);
+      state.chamadosHistorico = getHistoricoLocais(usuarioLogado.email);
       state.carregando = false;
       render();
 
       if (typeof window.ouvirChamadosCliente === "function") {
         const unsub = window.ouvirChamadosCliente(usuarioLogado.email, function (lista) {
-          state.chamados = combinarChamados(lista, usuarioLogado.email);
+          state.chamadosAtivos = combinarChamados(lista, usuarioLogado.email).filter(function (item) {
+            const status = String((item && item.status) || "");
+            return status !== "Concluído" && status !== "Cancelado";
+          });
           state.carregando = false;
           render();
         });
-        if (typeof unsub === "function") state.unsubscribe = unsub;
-        return;
+        if (typeof unsub === "function") state.unsubscribeAtivos = unsub;
       }
 
-      state.chamados = combinarChamados([], usuarioLogado.email);
-      render();
+      if (typeof window.ouvirHistoricoChamados === "function") {
+        const unsubHist = window.ouvirHistoricoChamados(
+          function (lista) {
+            state.chamadosHistorico = ordenarChamados(lista || []);
+            render();
+          },
+          { emailCliente: usuarioLogado.email }
+        );
+        if (typeof unsubHist === "function") state.unsubscribeHistorico = unsubHist;
+      } else if (typeof window.carregarHistoricoChamados === "function") {
+        window
+          .carregarHistoricoChamados(usuarioLogado.email)
+          .then(function (lista) {
+            state.chamadosHistorico = ordenarChamados(lista || []);
+            render();
+          })
+          .catch(function () {});
+      }
     }
 
     render();
     iniciar();
 
     return function cleanupAcompanhar() {
-      if (typeof state.unsubscribe === "function") {
+      if (typeof state.unsubscribeAtivos === "function") {
         try {
-          state.unsubscribe();
+          state.unsubscribeAtivos();
+        } catch (error) {}
+      }
+      if (typeof state.unsubscribeHistorico === "function") {
+        try {
+          state.unsubscribeHistorico();
         } catch (error) {}
       }
     };
