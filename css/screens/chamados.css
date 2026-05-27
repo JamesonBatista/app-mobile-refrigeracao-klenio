@@ -1613,6 +1613,14 @@
   font-weight: 700;
 }
 
+.pa-info-row.overdue {
+  color: #e74c3c;
+}
+
+.pa-info-row.overdue > span:last-child {
+  font-weight: 700;
+}
+
 .pa-tags {
   display: flex;
   flex-wrap: wrap;
