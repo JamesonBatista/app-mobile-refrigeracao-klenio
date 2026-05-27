@@ -271,17 +271,11 @@
     }
 
     function ordenarPorAgenda(lista) {
-      const hoje = new Date();
-      hoje.setHours(0, 0, 0, 0);
       return [...(lista || [])].sort((a, b) => {
         const dataA = getDataReferenciaItem(a);
         const dataB = getDataReferenciaItem(b);
         const keyA = dataA ? dataA.getTime() : Number.MAX_SAFE_INTEGER;
         const keyB = dataB ? dataB.getTime() : Number.MAX_SAFE_INTEGER;
-        const isHojeA = dataA && keyA === hoje.getTime();
-        const isHojeB = dataB && keyB === hoje.getTime();
-        if (isHojeA && !isHojeB) return -1;
-        if (isHojeB && !isHojeA) return 1;
         if (keyA !== keyB) return keyA - keyB;
 
         const horaA = getHoraInicioMinutos(a && a.horario);
@@ -294,6 +288,14 @@
 
         return String(a && a.numero ? a.numero : "").localeCompare(String(b && b.numero ? b.numero : ""));
       });
+    }
+
+    function isDataAtrasada(item) {
+      const dataRef = getDataReferenciaItem(item);
+      if (!dataRef) return false;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      return dataRef.getTime() < hoje.getTime();
     }
 
     function parseDataHoraTexto(dataTexto, horaTexto) {
@@ -591,6 +593,7 @@
       const urgente = chamado.urgencia === "Urgente";
       const deOrcamento = !!chamado.geradoDeOrcamento;
       const tipos = Array.isArray(chamado.tipos) ? chamado.tipos : [];
+      const atrasado = isDataAtrasada(chamado);
 
       return `
         <article
@@ -642,7 +645,10 @@
                 : ""
             }
             <div class="pa-info-row"><span>📱</span><span>${escapeHtml(chamado.clienteTelefone || "Não informado")}</span></div>
-            <div class="pa-info-row"><span>📅</span><span>${escapeHtml(chamado.dataFormatada || "-")} • ${escapeHtml(chamado.horario || "-")}</span></div>
+            <div class="pa-info-row${atrasado ? " overdue" : ""}">
+              <span>${atrasado ? "🔴" : "📅"}</span>
+              <span>${escapeHtml(chamado.dataFormatada || "-")} • ${escapeHtml(chamado.horario || "-")}</span>
+            </div>
             <div class="pa-info-row"><span>📍</span><span>${escapeHtml(chamado.endereco || "-")}</span></div>
             ${
               tipos.length
@@ -675,6 +681,7 @@
       const expandido = !!state.historicoExpandido[item.numero];
       const historico = Array.isArray(item.historico) ? item.historico : [];
       const countdown = formatarDiasRestantes(item.dataChave);
+      const atrasado = isDataAtrasada(item);
 
       return `
         <article
@@ -699,7 +706,10 @@
             <div class="pa-info-row"><span>🛠️</span><span>${escapeHtml(item.tipo || "-")}</span></div>
             <div class="pa-info-row"><span>👤</span><span>${escapeHtml(item.cliente || "-")}</span></div>
             <div class="pa-info-row"><span>📱</span><span>${escapeHtml(item.clienteTelefone || "Não informado")}</span></div>
-            <div class="pa-info-row"><span>📅</span><span>${escapeHtml(item.dataFormatada || "-")} • ${escapeHtml(item.horario || "-")}</span></div>
+            <div class="pa-info-row${atrasado ? " overdue" : ""}">
+              <span>${atrasado ? "🔴" : "📅"}</span>
+              <span>${escapeHtml(item.dataFormatada || "-")} • ${escapeHtml(item.horario || "-")}</span>
+            </div>
             <div class="pa-info-row"><span>📍</span><span>${escapeHtml(item.endereco || "-")}</span></div>
             ${item.tecnico ? `<div class="pa-info-row"><span>👷</span><span>Técnico: ${escapeHtml(item.tecnico)}</span></div>` : ""}
           </div>
