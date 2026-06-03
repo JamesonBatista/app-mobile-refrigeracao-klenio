@@ -17,9 +17,9 @@
   ];
 
   const HORARIOS_SABADO = ["09:00 às 11:00", "11:30 às 13:00"];
-
-  const MAX_POR_DIA = 4;
-  const MAX_SABADO = 2;
+  const CAPACIDADE_POR_HORARIO = 1;
+  const MAX_POR_DIA = HORARIOS_SEMANA.length * CAPACIDADE_POR_HORARIO;
+  const MAX_SABADO = HORARIOS_SABADO.length * CAPACIDADE_POR_HORARIO;
 
   const STATUS_ORDEM_CHAMADOS_CLIENTE = {
     "Aguardando técnico": 0,
@@ -675,19 +675,20 @@
       if (bloqueiosDia.includes("DIA_COMPLETO") || totalOcupacoes >= maxDia) return [];
 
       return horariosDia.filter(function (horario) {
-        const ocupadoChamado = chamadosDia.some(function (item) {
-          return item.horario === horario;
-        });
-        const ocupadoProgramado = programadosDia.some(function (item) {
-          return item.horario === horario;
-        });
+        const totalNoHorario =
+          chamadosDia.filter(function (item) {
+            return item.horario === horario;
+          }).length +
+          programadosDia.filter(function (item) {
+            return item.horario === horario;
+          }).length;
         const bloqueado = bloqueiosDia.includes(horario);
         let jaPassou = false;
         if (hoje) {
           const inicioHorario = getHoraInicio(horario);
           jaPassou = agoraEmMinutos >= inicioHorario - 30;
         }
-        return !ocupadoChamado && !ocupadoProgramado && !bloqueado && !jaPassou;
+        return totalNoHorario < CAPACIDADE_POR_HORARIO && !bloqueado && !jaPassou;
       });
     } catch (error) {
       console.log("Erro getHorariosDisponiveis:", error);
@@ -1275,6 +1276,7 @@
   const api = {
     HORARIOS_SEMANA,
     HORARIOS_SABADO,
+    CAPACIDADE_POR_HORARIO,
     MAX_POR_DIA,
     MAX_SABADO,
     isDomingo,
