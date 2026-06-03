@@ -18,7 +18,7 @@
   ];
 
   const HORARIOS_SABADO = ["09:00 às 11:00", "11:30 às 13:00"];
-  const CAPACIDADE_POR_HORARIO = 2;
+  const CAPACIDADE_POR_HORARIO = 1;
   const MAX_POR_DIA = HORARIOS_SEMANA.length * CAPACIDADE_POR_HORARIO;
   const MAX_SABADO = HORARIOS_SABADO.length * CAPACIDADE_POR_HORARIO;
 
@@ -980,14 +980,14 @@
       if ((!ignorarBloqueios && bloqueiosDia.includes("DIA_COMPLETO")) || totalOcupacoes >= maxDia) return [];
 
       return horariosDia.filter(function (horario) {
-        const totalChamadosNoHorario = chamadosDia.reduce(function (total, item) {
-          return total + (item.horario === horario ? 1 : 0);
-        }, 0);
-        const totalProgramadosNoHorario = programadosDia.reduce(function (total, item) {
-          return total + (item.horario === horario ? 1 : 0);
-        }, 0);
-        const totalNoHorario = totalChamadosNoHorario + totalProgramadosNoHorario;
-        const bloqueado = !ignorarBloqueios && bloqueiosDia.includes(horario);
+        const totalNoHorario =
+          chamadosDia.filter(function (item) {
+            return item.horario === horario;
+          }).length +
+          programadosDia.filter(function (item) {
+            return item.horario === horario;
+          }).length;
+        const bloqueado = bloqueiosDia.includes(horario);
         let jaPassou = false;
         if (hoje) {
           const inicioHorario = getHoraInicio(horario);
