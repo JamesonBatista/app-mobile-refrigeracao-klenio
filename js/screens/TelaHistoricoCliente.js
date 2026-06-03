@@ -188,17 +188,24 @@
       itens: [],
       carregando: true,
       filtro: "todos",
+      unsubscribe: null,
     };
 
     async function carregarHistorico() {
       try {
-        const chave = storageKey(usuarioLogado && usuarioLogado.email);
-        const raw = localStorage.getItem(chave);
-        const lista = raw ? JSON.parse(raw) : [];
-        lista.sort(function (a, b) {
-          return new Date(b.salvoEm || 0) - new Date(a.salvoEm || 0);
-        });
-        state.itens = lista;
+        const email = usuarioLogado && usuarioLogado.email;
+        if (typeof window.carregarHistoricoChamados === "function" && email) {
+          const listaRemota = await window.carregarHistoricoChamados(email, { forceServer: true });
+          state.itens = Array.isArray(listaRemota) ? listaRemota : [];
+        } else {
+          const chave = storageKey(email);
+          const raw = localStorage.getItem(chave);
+          const lista = raw ? JSON.parse(raw) : [];
+          lista.sort(function (a, b) {
+            return new Date(b.salvoEm || 0) - new Date(a.salvoEm || 0);
+          });
+          state.itens = lista;
+        }
       } catch (error) {
         console.log("Erro carregarHistorico:", error);
       }
@@ -254,7 +261,7 @@
 
             <article class="hc-info-box">
               <span class="hc-info-emoji">📱</span>
-              <p>Histórico salvo localmente neste dispositivo.</p>
+              <p>Histórico sincronizado automaticamente com o servidor.</p>
             </article>
 
             <div class="hc-filtros">
@@ -305,6 +312,25 @@
 
     render();
     carregarHistorico();
+
+    if (typeof window.ouvirHistoricoChamados === "function" && usuarioLogado && usuarioLogado.email) {
+      state.unsubscribe = window.ouvirHistoricoChamados(
+        function (lista) {
+          state.itens = Array.isArray(lista) ? lista : [];
+          state.carregando = false;
+          render();
+        },
+        { emailCliente: usuarioLogado.email }
+      );
+    }
+
+    return function cleanupHistoricoCliente() {
+      if (typeof state.unsubscribe === "function") {
+        try {
+          state.unsubscribe();
+        } catch (error) {}
+      }
+    };
   }
 
   window.salvarItemHistoricoLocal = salvarItemHistoricoLocal;

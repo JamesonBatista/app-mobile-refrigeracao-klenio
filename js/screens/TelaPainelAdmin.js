@@ -109,19 +109,28 @@
     if (
       window.db &&
       typeof window.db.collection === "function" &&
-      window.db.collection("chamados") &&
-      typeof window.db.collection("chamados").doc === "function"
+      window.db.collection("historico") &&
+      typeof window.db.collection("historico").doc === "function"
     ) {
-      await window.db
-        .collection("chamados")
-        .doc(chamado.numero)
-        .update({
+      const docRef = window.db.collection("historico").doc(chamado.numero);
+      try {
+        await docRef.update({
           excluidoPorAdmin: true,
           excluidoEm: new Date().toLocaleDateString("pt-BR"),
         });
+      } catch (error) {
+        await docRef.set(
+          {
+            numero: chamado.numero,
+            excluidoPorAdmin: true,
+            excluidoEm: new Date().toLocaleDateString("pt-BR"),
+          },
+          { merge: true }
+        );
+      }
       return;
     }
-    updateItemByNumero("@chamados", chamado.numero, {
+    updateItemByNumero("@historicoChamados", chamado.numero, {
       excluidoPorAdmin: true,
       excluidoEm: new Date().toLocaleDateString("pt-BR"),
     });
@@ -227,14 +236,66 @@
       historicoExpandido: {},
       unsubscribers: [],
       fallbackIntervals: [],
+      refreshTentativas: 0,
+      ultimoSyncEm: "",
+      destroyed: false,
     };
 
-    function ordenarPorUrgencia(lista) {
-      return [...lista].sort((a, b) => {
-        if (a.urgencia === "Urgente" && b.urgencia !== "Urgente") return -1;
-        if (b.urgencia === "Urgente" && a.urgencia !== "Urgente") return 1;
-        return 0;
+    function parseDataChave(dataChave) {
+      const partes = String(dataChave || "").split("-");
+      if (partes.length !== 3) return null;
+      const ano = Number(partes[0]);
+      const mes = Number(partes[1]) - 1;
+      const dia = Number(partes[2]);
+      const dt = new Date(ano, mes, dia);
+      if (Number.isNaN(dt.getTime())) return null;
+      dt.setHours(0, 0, 0, 0);
+      return dt;
+    }
+
+    function getHoraInicioMinutos(horario) {
+      if (!horario) return 0;
+      const inicio = String(horario).split("às")[0].trim();
+      const [h, m] = inicio.split(":").map(Number);
+      return (h || 0) * 60 + (m || 0);
+    }
+
+    function getDataReferenciaItem(item) {
+      const byChave = parseDataChave(item && item.dataChave);
+      if (byChave) return byChave;
+      const ts = parseDataHoraTexto(item && item.dataAbertura, item && item.horaAbertura);
+      if (!ts) return null;
+      const dt = new Date(ts);
+      dt.setHours(0, 0, 0, 0);
+      return dt;
+    }
+
+    function ordenarPorAgenda(lista) {
+      return [...(lista || [])].sort((a, b) => {
+        const dataA = getDataReferenciaItem(a);
+        const dataB = getDataReferenciaItem(b);
+        const keyA = dataA ? dataA.getTime() : Number.MAX_SAFE_INTEGER;
+        const keyB = dataB ? dataB.getTime() : Number.MAX_SAFE_INTEGER;
+        if (keyA !== keyB) return keyA - keyB;
+
+        const horaA = getHoraInicioMinutos(a && a.horario);
+        const horaB = getHoraInicioMinutos(b && b.horario);
+        if (horaA !== horaB) return horaA - horaB;
+
+        const urgA = a && a.urgencia === "Urgente" ? 0 : 1;
+        const urgB = b && b.urgencia === "Urgente" ? 0 : 1;
+        if (urgA !== urgB) return urgA - urgB;
+
+        return String(a && a.numero ? a.numero : "").localeCompare(String(b && b.numero ? b.numero : ""));
       });
+    }
+
+    function isDataAtrasada(item) {
+      const dataRef = getDataReferenciaItem(item);
+      if (!dataRef) return false;
+      const hoje = new Date();
+      hoje.setHours(0, 0, 0, 0);
+      return dataRef.getTime() < hoje.getTime();
     }
 
     function parseDataHoraTexto(dataTexto, horaTexto) {
@@ -291,28 +352,25 @@
 
     function processarChamados(lista) {
       const visiveis = (lista || []).filter((item) => !item.excluidoPorAdmin);
-      state.chamadosPendentes = ordenarPorUrgencia(
+      state.chamadosPendentes = ordenarPorAgenda(
         visiveis.filter((item) => item.status === "Aguardando técnico")
       );
-      state.chamadosAtivos = ordenarPorUrgencia(
+      state.chamadosAtivos = ordenarPorAgenda(
         visiveis.filter((item) => item.status === "Aceito" || item.status === "Em atendimento")
       );
-      state.chamadosConcluidos = visiveis.filter(
-        (item) => item.status === "Concluído" || item.status === "Cancelado"
-      ).sort((a, b) => getChamadoTimestamp(b) - getChamadoTimestamp(a));
       state.carregando = false;
       render();
     }
 
     function processarProgramados(lista) {
-      const ordenada = [...(lista || [])].sort((a, b) => {
-        if (a.dataChave && b.dataChave) {
-          const diff = a.dataChave.localeCompare(b.dataChave);
-          if (diff !== 0) return diff;
-        }
-        return (ORDEM_PROGRAMADO[a.status] ?? 7) - (ORDEM_PROGRAMADO[b.status] ?? 7);
-      });
+      const ordenada = ordenarPorAgenda(lista || []);
       state.programados = ordenada.filter((item) => item.status !== "Cancelado" && item.status !== "Concluído");
+      render();
+    }
+
+    function processarHistorico(lista) {
+      const visiveis = (lista || []).filter((item) => !item.excluidoPorAdmin);
+      state.chamadosConcluidos = visiveis.sort((a, b) => getChamadoTimestamp(b) - getChamadoTimestamp(a));
       render();
     }
 
@@ -326,25 +384,52 @@
     async function atualizarDadosPainel(mostrarLoading) {
       if (mostrarLoading) {
         state.refreshing = true;
+        state.refreshTentativas = 0;
         render();
       }
 
       try {
-        const [chamados, programados, orcamentos] = await Promise.all([
-          typeof window.carregarChamados === "function"
-            ? window.carregarChamados()
-            : Promise.resolve(parseArrayStorage("@chamados")),
-          typeof window.carregarTodosProgramados === "function"
-            ? window.carregarTodosProgramados()
-            : Promise.resolve(parseArrayStorage("@programados")),
-          typeof window.carregarTodosOrcamentos === "function"
-            ? window.carregarTodosOrcamentos()
-            : Promise.resolve(parseArrayStorage("@orcamentos")),
-        ]);
-
-        processarChamados(chamados);
-        processarProgramados(programados);
-        processarOrcamentos(orcamentos);
+        const sincronizado = typeof window.sincronizarPainelAdminServidor === "function";
+        if (sincronizado && mostrarLoading) {
+          const dados = await window.sincronizarPainelAdminServidor({
+            retryForever: true,
+            retryEveryMs: 3000,
+            shouldCancel: function () {
+              return !!state.destroyed;
+            },
+            onRetry: function (info) {
+              state.refreshTentativas = Number(info && info.attempt) || state.refreshTentativas;
+              render();
+            },
+          });
+          processarChamados(dados.chamados || []);
+          processarProgramados(dados.programados || []);
+          processarOrcamentos(dados.orcamentos || []);
+          processarHistorico(dados.historico || []);
+          state.ultimoSyncEm = new Date().toLocaleTimeString("pt-BR", {
+            hour: "2-digit",
+            minute: "2-digit",
+          });
+        } else {
+          const [chamados, programados, orcamentos, historico] = await Promise.all([
+            typeof window.carregarChamados === "function"
+              ? window.carregarChamados({ forceServer: !!mostrarLoading, throwOnError: !!mostrarLoading })
+              : Promise.resolve(parseArrayStorage("@chamados")),
+            typeof window.carregarTodosProgramados === "function"
+              ? window.carregarTodosProgramados()
+              : Promise.resolve(parseArrayStorage("@programados")),
+            typeof window.carregarTodosOrcamentos === "function"
+              ? window.carregarTodosOrcamentos()
+              : Promise.resolve(parseArrayStorage("@orcamentos")),
+            typeof window.carregarHistoricoChamados === "function"
+              ? window.carregarHistoricoChamados(null, { forceServer: !!mostrarLoading, throwOnError: !!mostrarLoading })
+              : Promise.resolve(parseArrayStorage("@historicoChamados")),
+          ]);
+          processarChamados(chamados);
+          processarProgramados(programados);
+          processarOrcamentos(orcamentos);
+          processarHistorico(historico);
+        }
       } catch (error) {
         console.log("Erro atualizar painel:", error);
       } finally {
@@ -391,6 +476,20 @@
       }
       const loadLocal = function () {
         processarOrcamentos(parseArrayStorage("@orcamentos"));
+      };
+      loadLocal();
+      const interval = setInterval(loadLocal, 3000);
+      state.fallbackIntervals.push(interval);
+    }
+
+    function subscribeHistorico() {
+      if (typeof window.ouvirHistoricoChamados === "function") {
+        const unsub = window.ouvirHistoricoChamados(processarHistorico);
+        if (typeof unsub === "function") state.unsubscribers.push(unsub);
+        return;
+      }
+      const loadLocal = function () {
+        processarHistorico(parseArrayStorage("@historicoChamados"));
       };
       loadLocal();
       const interval = setInterval(loadLocal, 3000);
@@ -494,6 +593,7 @@
       const urgente = chamado.urgencia === "Urgente";
       const deOrcamento = !!chamado.geradoDeOrcamento;
       const tipos = Array.isArray(chamado.tipos) ? chamado.tipos : [];
+      const atrasado = isDataAtrasada(chamado);
 
       return `
         <article
@@ -545,7 +645,10 @@
                 : ""
             }
             <div class="pa-info-row"><span>📱</span><span>${escapeHtml(chamado.clienteTelefone || "Não informado")}</span></div>
-            <div class="pa-info-row"><span>📅</span><span>${escapeHtml(chamado.dataFormatada || "-")} • ${escapeHtml(chamado.horario || "-")}</span></div>
+            <div class="pa-info-row${atrasado ? " overdue" : ""}">
+              <span>${atrasado ? "🔴" : "📅"}</span>
+              <span>${escapeHtml(chamado.dataFormatada || "-")} • ${escapeHtml(chamado.horario || "-")}</span>
+            </div>
             <div class="pa-info-row"><span>📍</span><span>${escapeHtml(chamado.endereco || "-")}</span></div>
             ${
               tipos.length
@@ -578,6 +681,7 @@
       const expandido = !!state.historicoExpandido[item.numero];
       const historico = Array.isArray(item.historico) ? item.historico : [];
       const countdown = formatarDiasRestantes(item.dataChave);
+      const atrasado = isDataAtrasada(item);
 
       return `
         <article
@@ -602,7 +706,10 @@
             <div class="pa-info-row"><span>🛠️</span><span>${escapeHtml(item.tipo || "-")}</span></div>
             <div class="pa-info-row"><span>👤</span><span>${escapeHtml(item.cliente || "-")}</span></div>
             <div class="pa-info-row"><span>📱</span><span>${escapeHtml(item.clienteTelefone || "Não informado")}</span></div>
-            <div class="pa-info-row"><span>📅</span><span>${escapeHtml(item.dataFormatada || "-")} • ${escapeHtml(item.horario || "-")}</span></div>
+            <div class="pa-info-row${atrasado ? " overdue" : ""}">
+              <span>${atrasado ? "🔴" : "📅"}</span>
+              <span>${escapeHtml(item.dataFormatada || "-")} • ${escapeHtml(item.horario || "-")}</span>
+            </div>
             <div class="pa-info-row"><span>📍</span><span>${escapeHtml(item.endereco || "-")}</span></div>
             ${item.tecnico ? `<div class="pa-info-row"><span>👷</span><span>Técnico: ${escapeHtml(item.tecnico)}</span></div>` : ""}
           </div>
@@ -708,6 +815,7 @@
         }
 
         if (action === "refresh") {
+          if (state.refreshing) return;
           atualizarDadosPainel(true);
           return;
         }
@@ -937,10 +1045,22 @@
             </div>
 
             <div class="pa-toolbar">
-              <button class="pa-refresh-btn" data-action="refresh" type="button">
-                ${state.refreshing ? "⏳ Atualizando..." : "🔄 Atualizar"}
+              <button class="pa-refresh-btn" data-action="refresh" type="button" ${state.refreshing ? "disabled" : ""}>
+                ${
+                  state.refreshing
+                    ? '<span class="pa-refresh-inline-loading"><span class="ch-spinner"></span><span>Sincronizando...</span></span>'
+                    : "🔄 Atualizar"
+                }
               </button>
             </div>
+
+            ${
+              state.refreshing && state.refreshTentativas > 0
+                ? `<p class="pa-filter-results">Tentando conectar ao servidor... tentativa ${state.refreshTentativas}</p>`
+                : state.ultimoSyncEm
+                  ? `<p class="pa-filter-results">Última sincronização: ${escapeHtml(state.ultimoSyncEm)}</p>`
+                  : ""
+            }
 
             ${renderLista(lista)}
             <div style="height:20px"></div>
@@ -956,8 +1076,11 @@
     subscribeChamados();
     subscribeProgramados();
     subscribeOrcamentos();
+    subscribeHistorico();
+    atualizarDadosPainel(false);
 
     return function cleanupPainelAdmin() {
+      state.destroyed = true;
       state.unsubscribers.forEach((fn) => {
         try {
           fn();

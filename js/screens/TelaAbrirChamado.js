@@ -21,6 +21,10 @@
     "09:00 às 11:00",
     "11:30 às 13:00",
   ];
+  const MAX_FOTO_BYTES = 220 * 1024;
+  const MAX_CHAMADO_BYTES = 900 * 1024;
+  const REATIVACAO_TOTAL_MS = 120000;
+  const REATIVACAO_INTERVALO_MS = 10000;
 
   function criarFlocosFundo(container, prefixoClasse) {
     container.innerHTML = "";
@@ -81,12 +85,35 @@
     return isSabado(data) ? HORARIOS_SABADO_PADRAO : HORARIOS_SEMANA_PADRAO;
   }
 
-  async function salvarChamadoSafe(chamado) {
+  async function salvarChamadoSafe(chamado, options) {
     if (typeof window.salvarChamado === "function") {
-      await window.salvarChamado(chamado);
+      await window.salvarChamado(chamado, options);
       return;
     }
     throw new Error("Serviço de chamados indisponível");
+  }
+
+  function isErroConexaoFirestore(error) {
+    if (typeof window.isFirestoreRetryableError === "function") {
+      return !!window.isFirestoreRetryableError(error);
+    }
+    const code = String((error && error.code) || "").toLowerCase();
+    return (
+      code.includes("unavailable") ||
+      code.includes("deadline-exceeded") ||
+      code.includes("resource-exhausted") ||
+      code.includes("internal") ||
+      code.includes("aborted") ||
+      code.includes("cancelled") ||
+      code.includes("network")
+    );
+  }
+
+  function formatarTempoRestante(totalSegundos) {
+    const segundos = Math.max(0, Number(totalSegundos) || 0);
+    const mm = String(Math.floor(segundos / 60)).padStart(2, "0");
+    const ss = String(segundos % 60).padStart(2, "0");
+    return `${mm}:${ss}`;
   }
 
   function escapeHtml(value) {
@@ -111,6 +138,70 @@
     });
   }
 
+  function getBytesFromText(value) {
+    try {
+      return new Blob([String(value || "")]).size;
+    } catch (error) {
+      return String(value || "").length;
+    }
+  }
+
+  function getChamadoPayloadBytes(chamado) {
+    try {
+      return getBytesFromText(JSON.stringify(chamado || {}));
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  async function converterImagemComLimite(file) {
+    if (!file || !String(file.type || "").startsWith("image/")) {
+      return lerArquivoComoDataUrl(file);
+    }
+
+    let objectUrl = "";
+    try {
+      objectUrl = URL.createObjectURL(file);
+      const img = new Image();
+      await new Promise(function (resolve, reject) {
+        img.onload = function () {
+          resolve();
+        };
+        img.onerror = function () {
+          reject(new Error("Falha ao carregar imagem"));
+        };
+        img.src = objectUrl;
+      });
+
+      const maxDim = 1280;
+      const maior = Math.max(img.width, img.height) || 1;
+      const escala = Math.min(1, maxDim / maior);
+      const largura = Math.max(1, Math.round(img.width * escala));
+      const altura = Math.max(1, Math.round(img.height * escala));
+      const canvas = document.createElement("canvas");
+      canvas.width = largura;
+      canvas.height = altura;
+      const ctx = canvas.getContext("2d");
+      if (!ctx) return lerArquivoComoDataUrl(file);
+      ctx.drawImage(img, 0, 0, largura, altura);
+
+      const qualidades = [0.78, 0.68, 0.58, 0.48];
+      let melhor = canvas.toDataURL("image/jpeg", qualidades[qualidades.length - 1]);
+      for (const qualidade of qualidades) {
+        const tentativa = canvas.toDataURL("image/jpeg", qualidade);
+        melhor = tentativa;
+        if (getBytesFromText(tentativa) <= MAX_FOTO_BYTES) {
+          return tentativa;
+        }
+      }
+      return melhor;
+    } catch (error) {
+      return lerArquivoComoDataUrl(file);
+    } finally {
+      if (objectUrl) URL.revokeObjectURL(objectUrl);
+    }
+  }
+
   function renderTelaAbrirChamado(root, props) {
     const usuarioLogado = props && props.usuarioLogado ? props.usuarioLogado : {};
     const state = {
@@ -129,6 +220,9 @@
       carregando: false,
       carregandoHorarios: false,
       diasLotados: {},
+      reativandoSistema: false,
+      reativacaoSegundos: Math.ceil(REATIVACAO_TOTAL_MS / 1000),
+      reativacaoTentativas: 0,
     };
 
     async function verificarDiasLotados() {
@@ -172,7 +266,7 @@
       try {
         const imagens = await Promise.all(
           selecionados.map(async function (file) {
-            const uri = await lerArquivoComoDataUrl(file);
+            const uri = await converterImagemComLimite(file);
             return { uri, nome: file.name || "foto" };
           })
         );
@@ -190,6 +284,36 @@
       state.fotos = state.fotos.filter((_, i) => i !== index);
       if (state.fotoExpandida === foto?.uri) state.fotoExpandida = null;
       render();
+    }
+
+    async function executarReativacaoSistema() {
+      if (typeof window.reativarFirestoreComContagem !== "function") {
+        return { ok: false, attempts: 0 };
+      }
+
+      state.reativandoSistema = true;
+      state.reativacaoSegundos = Math.ceil(REATIVACAO_TOTAL_MS / 1000);
+      state.reativacaoTentativas = 0;
+      render();
+
+      try {
+        const resultado = await window.reativarFirestoreComContagem({
+          totalMs: REATIVACAO_TOTAL_MS,
+          retryEveryMs: REATIVACAO_INTERVALO_MS,
+          reason: "abrir-chamado",
+          onTick: function (info) {
+            state.reativacaoSegundos = Number(info && info.remainingSeconds) || 0;
+            state.reativacaoTentativas = Number(info && info.attempts) || 0;
+            render();
+          },
+        });
+        return resultado && typeof resultado === "object" ? resultado : { ok: false, attempts: 0 };
+      } catch (error) {
+        return { ok: false, attempts: state.reativacaoTentativas || 0, error };
+      } finally {
+        state.reativandoSistema = false;
+        render();
+      }
     }
 
     async function handleAbrirChamado() {
@@ -251,7 +375,43 @@
       };
 
       try {
-        await salvarChamadoSafe(chamado);
+        if (typeof window.preaquecerFirestore === "function") {
+          await window.preaquecerFirestore({ force: true, reason: "abrir-chamado" });
+        }
+        if (!window.db || typeof window.db.collection !== "function") {
+          throw Object.assign(new Error("servico-indisponivel"), { code: "failed-precondition" });
+        }
+
+        const payloadBytes = getChamadoPayloadBytes(chamado);
+        if (payloadBytes > MAX_CHAMADO_BYTES) {
+          throw Object.assign(new Error("payload-too-large"), { code: "invalid-argument" });
+        }
+
+        try {
+          await salvarChamadoSafe(chamado, {
+            maxAttempts: 1,
+            retryEveryMs: 1000,
+            retryForMs: 1000,
+          });
+        } catch (errorInicial) {
+          const codeInicial = String((errorInicial && errorInicial.code) || "").toLowerCase();
+          const deveTentarReativar = isErroConexaoFirestore(errorInicial) || codeInicial.includes("failed-precondition");
+          if (!deveTentarReativar) {
+            throw errorInicial;
+          }
+
+          const resultadoReativacao = await executarReativacaoSistema();
+          if (!resultadoReativacao || !resultadoReativacao.ok) {
+            throw errorInicial;
+          }
+
+          await salvarChamadoSafe(chamado, {
+            maxAttempts: 2,
+            retryEveryMs: 2000,
+            retryForMs: 8000,
+          });
+        }
+
         state.carregando = false;
         render();
         window.showAppAlert('Chamado aberto! ❄\nSeu chamado foi enviado. Acompanhe em "Acompanhar Chamado".');
@@ -259,10 +419,36 @@
       } catch (error) {
         state.carregando = false;
         render();
-        window.showAppAlert(
-          "Erro\nNão foi possível confirmar o chamado no Firestore após 2 minutos. Nada foi salvo apenas local."
-        );
+        const code = String((error && error.code) || "").toLowerCase();
+        if (code.includes("invalid-argument") || code.includes("resource-exhausted")) {
+          window.showAppAlert(
+            "Erro\nNão foi possível enviar o chamado com as fotos selecionadas. Tente com menos fotos ou imagens menores."
+          );
+          return;
+        }
+        if (code.includes("failed-precondition")) {
+          window.showAppAlert(
+            "Erro\nProblemas de instabilidade de sistema, estamos reativando. Tente novamente em instantes."
+          );
+          return;
+        }
+        window.showAppAlert("Erro\nNão foi possível concluir seu chamado agora. Tente novamente em instantes.");
       }
+    }
+
+    function renderModalReativacao() {
+      if (!state.reativandoSistema) return "";
+      return `
+        <div class="ab-reativacao-overlay">
+          <div class="ab-reativacao-card">
+            <div class="ch-spinner"></div>
+            <h3>Problemas de instabilidade de sistema, estamos reativando</h3>
+            <p class="ab-reativacao-tempo">${formatarTempoRestante(state.reativacaoSegundos)}</p>
+            <p class="ab-reativacao-sub">Tentativas automáticas: ${state.reativacaoTentativas}</p>
+            <p class="ab-reativacao-sub">Aguarde enquanto concluímos a reconexão.</p>
+          </div>
+        </div>
+      `;
     }
 
     function renderTipos() {
@@ -578,7 +764,9 @@
             <button class="ch-btn-main" id="ab-abrir-chamado" type="button" ${state.carregando ? "disabled" : ""}>
               ${
                 state.carregando
-                  ? '<span class="ch-btn-inline-loading"><span class="ch-spinner"></span><span>Abrindo chamado...</span></span>'
+                  ? `<span class="ch-btn-inline-loading"><span class="ch-spinner"></span><span>${
+                      state.reativandoSistema ? "Reativando sistema..." : "Abrindo chamado..."
+                    }</span></span>`
                   : "🔧 Abrir Chamado"
               }
             </button>
@@ -587,6 +775,7 @@
           </div>
 
           ${renderModalFoto()}
+          ${renderModalReativacao()}
         </section>
       `;
 

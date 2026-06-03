@@ -498,6 +498,49 @@
   color: rgba(180, 220, 255, 0.3);
 }
 
+.ab-reativacao-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1300;
+  background: rgba(5, 12, 22, 0.88);
+  display: grid;
+  place-items: center;
+  padding: 16px;
+}
+
+.ab-reativacao-card {
+  width: min(460px, 100%);
+  border-radius: 16px;
+  border: 1px solid rgba(56, 182, 255, 0.25);
+  background: #0d2240;
+  padding: 20px 16px;
+  text-align: center;
+}
+
+.ab-reativacao-card .ch-spinner {
+  margin-bottom: 12px;
+}
+
+.ab-reativacao-card h3 {
+  color: #fff;
+  font-size: 16px;
+  line-height: 1.35;
+}
+
+.ab-reativacao-tempo {
+  margin-top: 10px;
+  color: #38b6ff;
+  font-size: 28px;
+  font-weight: 700;
+  letter-spacing: 1px;
+}
+
+.ab-reativacao-sub {
+  margin-top: 6px;
+  color: rgba(180, 220, 255, 0.65);
+  font-size: 12px;
+}
+
 .ch-modal {
   position: fixed;
   inset: 0;
@@ -1360,6 +1403,23 @@
   cursor: pointer;
 }
 
+.pa-refresh-btn:disabled {
+  opacity: 0.7;
+  cursor: default;
+}
+
+.pa-refresh-inline-loading {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.pa-refresh-inline-loading .ch-spinner {
+  width: 14px;
+  height: 14px;
+  margin: 0;
+}
+
 .pa-loading,
 .pa-empty {
   text-align: center;
@@ -1550,6 +1610,14 @@
 }
 
 .pa-info-row.countdown {
+  font-weight: 700;
+}
+
+.pa-info-row.overdue {
+  color: #e74c3c;
+}
+
+.pa-info-row.overdue > span:last-child {
   font-weight: 700;
 }
 
