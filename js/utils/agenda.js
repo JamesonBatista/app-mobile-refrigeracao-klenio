@@ -444,12 +444,16 @@
     return data.getDay() === 6;
   }
 
-  function getProximosDias() {
+  // Quantidade de dias selecionáveis (seg–sáb) exibidos na agenda = 2 semanas.
+  const DIAS_AGENDA_DISPONIVEIS = 14;
+
+  function getProximosDias(quantidade) {
+    const limite = Number.isFinite(quantidade) && quantidade > 0 ? quantidade : DIAS_AGENDA_DISPONIVEIS;
     const dias = [];
     const hoje = new Date();
     let contador = 0;
     let i = 0;
-    while (contador < 7) {
+    while (contador < limite) {
       const data = new Date(hoje);
       data.setDate(hoje.getDate() + i);
       i += 1;
@@ -1645,6 +1649,7 @@
     CAPACIDADE_POR_HORARIO,
     MAX_POR_DIA,
     MAX_SABADO,
+    DIAS_AGENDA_DISPONIVEIS,
     isDomingo,
     isSabado,
     getProximosDias,

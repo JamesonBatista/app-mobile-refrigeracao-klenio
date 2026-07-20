@@ -75,7 +75,7 @@
     const dias = [];
     const hoje = new Date();
     let i = 0;
-    while (dias.length < 7) {
+    while (dias.length < 14) {
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + i);
       i += 1;
