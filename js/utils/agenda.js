@@ -444,12 +444,16 @@
     return data.getDay() === 6;
   }
 
-  function getProximosDias() {
+  // Quantidade de dias selecionáveis (seg–sáb) exibidos na agenda = 2 semanas.
+  const DIAS_AGENDA_DISPONIVEIS = 14;
+
+  function getProximosDias(quantidade) {
+    const limite = Number.isFinite(quantidade) && quantidade > 0 ? quantidade : DIAS_AGENDA_DISPONIVEIS;
     const dias = [];
     const hoje = new Date();
     let contador = 0;
     let i = 0;
-    while (contador < 7) {
+    while (contador < limite) {
       const data = new Date(hoje);
       data.setDate(hoje.getDate() + i);
       i += 1;
@@ -470,7 +474,14 @@
   }
 
   function formatarDataChave(data) {
-    return data.toISOString().split("T")[0];
+    if (window.DataLocal && typeof window.DataLocal.formatarDataChaveLocal === "function") {
+      return window.DataLocal.formatarDataChaveLocal(data);
+    }
+    if (!(data instanceof Date) || Number.isNaN(data.getTime())) return "";
+    const pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
   }
 
   function getHorariosDoDia(data) {
@@ -1638,6 +1649,7 @@
     CAPACIDADE_POR_HORARIO,
     MAX_POR_DIA,
     MAX_SABADO,
+    DIAS_AGENDA_DISPONIVEIS,
     isDomingo,
     isSabado,
     getProximosDias,

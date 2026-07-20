@@ -14,9 +14,35 @@
 
   const notificationListener = { current: null };
   const responseListener = { current: null };
+  let navegandoPorHistorico = false;
+  let historicoInicializado = false;
 
-  function setTela(value) {
-    appState.tela = value;
+  function guards() {
+    return window.AuthGuards || null;
+  }
+
+  function resolverTela(value) {
+    const g = guards();
+    if (g && typeof g.resolverTelaAutorizada === "function") {
+      return g.resolverTelaAutorizada(value, appState.usuarioLogado);
+    }
+    return value;
+  }
+
+  function setTela(value, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const destino = opts.skipAuth ? value : resolverTela(value);
+    appState.tela = destino;
+
+    if (typeof history !== "undefined" && history.pushState) {
+      if (opts.replace || !historicoInicializado) {
+        history.replaceState({ tela: destino }, "", `#${destino}`);
+        historicoInicializado = true;
+      } else if (!navegandoPorHistorico && !opts.fromPop) {
+        history.pushState({ tela: destino }, "", `#${destino}`);
+      }
+    }
+
     renderTelaAtual();
   }
 
@@ -97,6 +123,16 @@
       return;
     }
     setTela(nomeTela);
+  }
+
+  function onPopState(event) {
+    const tela = event && event.state && event.state.tela ? event.state.tela : "inicial";
+    navegandoPorHistorico = true;
+    try {
+      setTela(tela, { fromPop: true });
+    } finally {
+      navegandoPorHistorico = false;
+    }
   }
 
   function obterRendererTela(nomeTela) {
@@ -264,6 +300,7 @@
     const onNotificationResponse = function (event) {
       const dados = event && event.detail ? event.detail : null;
       if (dados && dados.tela) {
+        // Deep-link só navega se o perfil tiver permissão
         setTela(dados.tela);
       }
     };
@@ -300,8 +337,15 @@
       screen.orientation.lock("portrait").catch(function () {});
     }
 
+    window.addEventListener("popstate", onPopState);
     registrarListenersNotificacao();
-    renderTelaAtual();
+
+    const hashTela = String(location.hash || "").replace(/^#/, "");
+    if (hashTela) {
+      setTela(hashTela, { replace: true });
+    } else {
+      setTela(appState.tela, { replace: true, skipAuth: true });
+    }
   });
 
   window.addEventListener("beforeunload", limparListenersNotificacao);

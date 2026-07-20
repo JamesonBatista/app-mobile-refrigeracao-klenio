@@ -50,7 +50,13 @@
   }
 
   function formatarDataChave(data) {
-    return data.toISOString().split("T")[0];
+    if (window.DataLocal && typeof window.DataLocal.formatarDataChaveLocal === "function") {
+      return window.DataLocal.formatarDataChaveLocal(data);
+    }
+    const pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
   }
 
   function formatarData(data) {
@@ -62,11 +68,16 @@
   }
 
   function getProximosDias() {
+    if (typeof window.getProximosDias === "function") {
+      return window.getProximosDias();
+    }
+    const limite =
+      typeof window.DIAS_AGENDA_DISPONIVEIS === "number" ? window.DIAS_AGENDA_DISPONIVEIS : 14;
     const dias = [];
     const hoje = new Date();
     let contador = 0;
     let i = 0;
-    while (contador < 7) {
+    while (contador < limite) {
       const data = new Date(hoje);
       data.setDate(hoje.getDate() + i);
       i += 1;
@@ -744,7 +755,7 @@
 
             <article class="ch-card">
               <h2 class="ch-title">Dia do atendimento <span style="color:#e74c3c">*</span></h2>
-              <p class="ch-sub">Selecione um dos próximos 7 dias</p>
+              <p class="ch-sub">Selecione um dos próximos 14 dias (2 semanas)</p>
               <div class="ab-dias-scroll">
                 ${renderDias()}
               </div>

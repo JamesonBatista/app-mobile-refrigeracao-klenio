@@ -43,7 +43,7 @@
     const dias = [];
     const hoje = new Date();
     let i = 0;
-    while (dias.length < 7) {
+    while (dias.length < 14) {
       const dia = new Date(hoje);
       dia.setDate(hoje.getDate() + i);
       i += 1;
@@ -60,6 +60,32 @@
   function getHorariosDoDiaSafe(data) {
     if (typeof window.getHorariosDoDia === "function") return window.getHorariosDoDia(data);
     return isSabadoSafe(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
+  }
+
+  function parseArrayStorage(key) {
+    try {
+      const raw = localStorage.getItem(key);
+      const parsed = raw ? JSON.parse(raw) : [];
+      return Array.isArray(parsed) ? parsed : [];
+    } catch (error) {
+      return [];
+    }
+  }
+
+  function carregarOcupacaoLocal() {
+    const chamados = parseArrayStorage("@chamados");
+    const programados = parseArrayStorage("@programados");
+    if (window.AgendaOcupacao && typeof window.AgendaOcupacao.montarOcupacaoPorDia === "function") {
+      return window.AgendaOcupacao.montarOcupacaoPorDia(chamados.concat(programados));
+    }
+    return {};
+  }
+
+  function ocupantesHorario(mapa, chave, horario) {
+    if (window.AgendaOcupacao && typeof window.AgendaOcupacao.ocupantesDoHorario === "function") {
+      return window.AgendaOcupacao.ocupantesDoHorario(mapa, chave, horario);
+    }
+    return [];
   }
 
   async function salvarBloqueioSafe(chave, lista) {
@@ -118,6 +144,7 @@
       dias: [],
       diaSelecionado: null,
       bloqueios: {},
+      ocupacao: {},
       carregando: true,
       salvando: false,
       unsubscribe: null,
@@ -304,9 +331,17 @@
             ${horarios
               .map(function (horario) {
                 const bloqueado = bloqueados.includes(horario) || total;
+                const chave = chaveAtual();
+                const ocupantes = ocupantesHorario(state.ocupacao, chave, horario);
+                const ocupado = ocupantes.length > 0;
+                const nomes = ocupantes
+                  .map(function (o) {
+                    return o.cliente || o.numero || "Atendimento";
+                  })
+                  .join(", ");
                 return `
                   <button
-                    class="ta-horario-btn${bloqueado ? " is-blocked" : ""}"
+                    class="ta-horario-btn${bloqueado ? " is-blocked" : ""}${ocupado && !bloqueado ? " is-ocupado" : ""}"
                     data-action="toggle-horario"
                     data-horario="${horario}"
                     type="button"
@@ -316,9 +351,15 @@
                       <span>🕐</span>
                       <span>${horario}</span>
                     </span>
-                    <span class="ta-status-pill${bloqueado ? " blocked" : ""}">
-                      <span>${bloqueado ? "🔒" : "🔓"}</span>
-                      <span>${bloqueado ? "Bloqueado" : "Disponível"}</span>
+                    <span class="ta-status-pill${bloqueado ? " blocked" : ocupado ? " occupied" : ""}">
+                      <span>${bloqueado ? "🔒" : ocupado ? "📌" : "🔓"}</span>
+                      <span>${
+                        bloqueado
+                          ? "Bloqueado"
+                          : ocupado
+                            ? `Ocupado${nomes ? `: ${nomes}` : ""}`
+                            : "Disponível"
+                      }</span>
                     </span>
                   </button>
                 `;
@@ -344,7 +385,7 @@
 
             <div class="ta-alert">
               <span style="font-size:20px">⚠️</span>
-              <span>Horários bloqueados não ficam disponíveis para novos chamados.</span>
+              <span>Horários bloqueados não ficam disponíveis para novos chamados. Ocupados já agendados aparecem marcados.</span>
             </div>
 
             <article class="ch-card">
@@ -367,8 +408,10 @@
     render();
     state.dias = getProximosDiasSafe();
     state.diaSelecionado = state.dias[0] || null;
+    state.ocupacao = carregarOcupacaoLocal();
     state.unsubscribe = ouvirBloqueiosSafe(function (dados) {
       state.bloqueios = dados || {};
+      state.ocupacao = carregarOcupacaoLocal();
       state.carregando = false;
       render();
     });

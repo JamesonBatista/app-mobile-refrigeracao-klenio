@@ -83,7 +83,7 @@
     const dias = [];
     const hoje = new Date();
     let i = 0;
-    while (dias.length < 7) {
+    while (dias.length < 14) {
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + i);
       i += 1;
@@ -930,7 +930,7 @@
 
             <article class="ch-card ap-card-gap">
               <h2 class="ch-title">Dia do atendimento <span style="color:#e74c3c">*</span></h2>
-              <p class="ch-sub">Próximos 7 dias ou selecione um período futuro</p>
+              <p class="ch-sub">Próximos 14 dias (2 semanas) ou selecione um período futuro</p>
 
               <div class="ap-days-row">
                 ${state.dias

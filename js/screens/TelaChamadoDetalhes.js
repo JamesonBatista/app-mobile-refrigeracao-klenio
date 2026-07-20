@@ -84,7 +84,7 @@
     const dias = [];
     const hoje = new Date();
     let offset = 0;
-    while (dias.length < 7) {
+    while (dias.length < 14) {
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + offset);
       offset += 1;

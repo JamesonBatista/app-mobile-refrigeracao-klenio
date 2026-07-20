@@ -2580,6 +2580,11 @@
   background: rgba(231, 76, 60, 0.1);
 }
 
+.ta-horario-btn.is-ocupado {
+  border-color: rgba(243, 156, 18, 0.45);
+  background: rgba(243, 156, 18, 0.12);
+}
+
 .ta-horario-btn:disabled {
   opacity: 0.5;
 }
@@ -2597,6 +2602,10 @@
   color: #e74c3c;
 }
 
+.ta-horario-btn.is-ocupado .ta-horario-left {
+  color: #f39c12;
+}
+
 .ta-status-pill {
   border-radius: 20px;
   background: rgba(39, 174, 96, 0.2);
@@ -2607,11 +2616,17 @@
   display: inline-flex;
   align-items: center;
   gap: 6px;
+  max-width: 55%;
 }
 
 .ta-status-pill.blocked {
   background: rgba(231, 76, 60, 0.2);
   color: #e74c3c;
+}
+
+.ta-status-pill.occupied {
+  background: rgba(243, 156, 18, 0.2);
+  color: #f39c12;
 }
 
 .ap-screen,
