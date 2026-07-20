@@ -81,20 +81,6 @@
       const novaSenha = novaSenhaEl.value;
       const confirmar = confirmarEl.value;
 
-      const dadosSalvos = localStorage.getItem("@usuario");
-      if (!dadosSalvos) {
-        erroEl.textContent = "❄ E-mail não encontrado. Verifique e tente novamente.";
-        erroEl.style.display = "block";
-        return;
-      }
-
-      const usuario = JSON.parse(dadosSalvos);
-      if (usuario.email !== email) {
-        erroEl.textContent = "❄ E-mail não encontrado. Verifique e tente novamente.";
-        erroEl.style.display = "block";
-        return;
-      }
-
       if (novaSenha.length < 6) {
         erroEl.textContent = "❄ A senha deve ter no mínimo 6 caracteres.";
         erroEl.style.display = "block";
@@ -107,8 +93,21 @@
         return;
       }
 
-      usuario.senha = novaSenha;
-      localStorage.setItem("@usuario", JSON.stringify(usuario));
+      const resultado =
+        window.RecuperarSenhaLocal && typeof window.RecuperarSenhaLocal.atualizarSenhaLocal === "function"
+          ? window.RecuperarSenhaLocal.atualizarSenhaLocal(localStorage, email, novaSenha)
+          : { ok: false, motivo: "email_nao_encontrado" };
+
+      if (!resultado.ok) {
+        if (resultado.motivo === "senha_curta") {
+          erroEl.textContent = "❄ A senha deve ter no mínimo 6 caracteres.";
+        } else {
+          erroEl.textContent = "❄ E-mail não encontrado. Verifique e tente novamente.";
+        }
+        erroEl.style.display = "block";
+        return;
+      }
+
       erroEl.textContent = "";
       erroEl.style.display = "none";
       formCard.style.display = "none";

@@ -470,7 +470,14 @@
   }
 
   function formatarDataChave(data) {
-    return data.toISOString().split("T")[0];
+    if (window.DataLocal && typeof window.DataLocal.formatarDataChaveLocal === "function") {
+      return window.DataLocal.formatarDataChaveLocal(data);
+    }
+    if (!(data instanceof Date) || Number.isNaN(data.getTime())) return "";
+    const pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
   }
 
   function getHorariosDoDia(data) {

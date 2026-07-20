@@ -34,7 +34,23 @@
   }
 
   function formatarDataChave(data) {
-    return data.toISOString().split("T")[0];
+    if (window.DataLocal && typeof window.DataLocal.formatarDataChaveLocal === "function") {
+      return window.DataLocal.formatarDataChaveLocal(data);
+    }
+    if (typeof window.formatarDataChave === "function") {
+      return window.formatarDataChave(data);
+    }
+    const pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
+  }
+
+  function horarioAindaDisponivelSafe(lista, horario) {
+    if (typeof window.horarioAindaDisponivel === "function") {
+      return window.horarioAindaDisponivel(lista, horario);
+    }
+    return Array.isArray(lista) && lista.indexOf(horario) >= 0;
   }
 
   function formatarData(data) {
@@ -163,6 +179,19 @@
       state.salvando = true;
       render();
       try {
+        // Revalida o horário no momento da confirmação (evita double-booking)
+        const horariosAtuais = await getHorariosDisponiveisSafe(state.diaSelecionado);
+        if (!horarioAindaDisponivelSafe(horariosAtuais, state.horario)) {
+          state.horariosDisponiveis = horariosAtuais || [];
+          state.horario = null;
+          state.salvando = false;
+          render();
+          window.showAppAlert(
+            "Horário indisponível ❄\nEsse horário acabou de ser ocupado. Escolha outro horário."
+          );
+          return;
+        }
+
         await atualizarOrcamentoSafe(orcamento.numero, { status: "Aprovado" });
 
         const chamado = {

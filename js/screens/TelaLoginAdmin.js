@@ -81,24 +81,31 @@
     async function handleLogin() {
       const email = emailEl.value;
       const senha = senhaEl.value;
-      const ad = ADMIN_EMAIL || ADMIN_EMAIL1 || ADMIN_EMAIL2 || ADMIN_EMAIL3;
 
-      // Mantido igual ao original, inclusive a regra permissiva.
-      if (
-        email === ADMIN_EMAIL1 ||
-        email === ADMIN_EMAIL ||
-        email === ADMIN_EMAIL2 ||
-        (email === ADMIN_EMAIL3 && senha === ADMIN_SENHA1) ||
-        senha === ADMIN_SENHA ||
-        senha === ADMIN_SENHA2 ||
-        senha === ADMIN_SENHA3
-      ) {
+      const valido =
+        window.AuthGuards && typeof window.AuthGuards.validarCredenciaisAdmin === "function"
+          ? window.AuthGuards.validarCredenciaisAdmin(email, senha)
+          : (email === ADMIN_EMAIL ||
+              email === ADMIN_EMAIL1 ||
+              email === ADMIN_EMAIL2 ||
+              email === ADMIN_EMAIL3) &&
+            (senha === ADMIN_SENHA ||
+              senha === ADMIN_SENHA1 ||
+              senha === ADMIN_SENHA2 ||
+              senha === ADMIN_SENHA3);
+
+      if (valido) {
         erroEl.style.display = "none";
+
+        const emailCanon =
+          window.AuthGuards && typeof window.AuthGuards.emailAdminCanonico === "function"
+            ? window.AuthGuards.emailAdminCanonico(email)
+            : email || ADMIN_EMAIL;
 
         const admin = {
           nome: "Administrador",
           perfil: "admin",
-          email: `${ad}@gmail.com` || ad,
+          email: `${emailCanon}@gmail.com`,
         };
 
         localStorage.setItem("@usuarioLogado", JSON.stringify(admin));

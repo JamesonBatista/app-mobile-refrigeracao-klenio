@@ -50,36 +50,39 @@
     }
   }
 
-  function parseDataBR(dataStr) {
-    if (!dataStr) return null;
-    const partes = dataStr.split("/");
-    if (partes.length !== 3) return null;
-    const d = Number.parseInt(partes[0], 10);
-    const m = Number.parseInt(partes[1], 10) - 1;
-    const y = Number.parseInt(partes[2], 10);
-    const dt = new Date(y, m, d);
-    if (Number.isNaN(dt.getTime())) return null;
-    return dt;
+  function rf() {
+    return window.RelatorioFinanceiro || {};
+  }
+
+  function getIntervalo(state) {
+    if (typeof rf().getIntervalo === "function") {
+      return rf().getIntervalo(state.filtroAtivo, {
+        dataInicio: state.dataInicio,
+        dataFim: state.dataFim,
+      });
+    }
+    return null;
+  }
+
+  function formatarIntervaloLabel(intervalo) {
+    if (typeof rf().formatarIntervaloBR === "function") {
+      return rf().formatarIntervaloBR(intervalo);
+    }
+    return "";
   }
 
   function dateFromRegistro(reg) {
-    if (reg.dataConclusaoISO) {
-      const dt = new Date(reg.dataConclusaoISO);
-      if (!Number.isNaN(dt.getTime())) return dt;
-    }
-    if (reg.dataConclusao) {
-      const dt = parseDataBR(reg.dataConclusao);
-      if (dt) return dt;
-    }
-    if (reg.dataServico) {
-      const dt = parseDataBR(reg.dataServico);
-      if (dt) return dt;
-    }
-    if (reg.dataCriacao) {
-      const dt = parseDataBR(reg.dataCriacao);
-      if (dt) return dt;
+    if (typeof rf().dateFromRegistro === "function") {
+      return rf().dateFromRegistro(reg);
     }
     return null;
+  }
+
+  function valorDoRegistro(reg) {
+    if (typeof rf().valorDoRegistro === "function") {
+      return rf().valorDoRegistro(reg);
+    }
+    return 0;
   }
 
   function ouvirRelatoriosSafe(callback) {
@@ -98,13 +101,8 @@
     };
   }
 
-  function valorNumber(v) {
-    const parsed = Number.parseFloat(String(v || "0").replace(",", "."));
-    return Number.isNaN(parsed) ? 0 : parsed;
-  }
-
   function formatarValor(valor) {
-    return valor.toLocaleString("pt-BR", {
+    return Number(valor || 0).toLocaleString("pt-BR", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
@@ -118,63 +116,27 @@
       dataInicio: "",
       dataFim: "",
       unsubscribe: null,
+      erroPeriodo: "",
+      campoFoco: null,
     };
 
-    function getIntervalo() {
-      const hoje = new Date();
-      hoje.setHours(23, 59, 59, 999);
-      const inicio = new Date();
-      inicio.setHours(0, 0, 0, 0);
-
-      if (state.filtroAtivo === "hoje") return { inicio, fim: hoje };
-      if (state.filtroAtivo === "semana") {
-        inicio.setDate(inicio.getDate() - 7);
-        return { inicio, fim: hoje };
-      }
-      if (state.filtroAtivo === "quinzena") {
-        inicio.setDate(inicio.getDate() - 15);
-        return { inicio, fim: hoje };
-      }
-      if (state.filtroAtivo === "mes") {
-        inicio.setDate(inicio.getDate() - 30);
-        return { inicio, fim: hoje };
-      }
-      if (state.filtroAtivo === "personalizado") {
-        const ini = parseDataBR(state.dataInicio);
-        const fim = parseDataBR(state.dataFim);
-        if (ini && fim) {
-          ini.setHours(0, 0, 0, 0);
-          fim.setHours(23, 59, 59, 999);
-          return { inicio: ini, fim };
-        }
-        return null;
-      }
-      return { inicio, fim: hoje };
-    }
-
     function relatoriosFiltrados() {
-      const intervalo = getIntervalo();
-      if (!intervalo) return [];
-      return state.relatorios
-        .filter((r) => {
-          const dataReg = dateFromRegistro(r);
-          return dataReg && dataReg >= intervalo.inicio && dataReg <= intervalo.fim;
-        })
-        .sort((a, b) => {
-          const da = dateFromRegistro(a);
-          const db = dateFromRegistro(b);
-          if (!da && !db) return 0;
-          if (!da) return 1;
-          if (!db) return -1;
-          return db - da;
+      if (typeof rf().filtrarRelatorios === "function") {
+        return rf().filtrarRelatorios(state.relatorios, state.filtroAtivo, {
+          dataInicio: state.dataInicio,
+          dataFim: state.dataFim,
         });
+      }
+      return [];
     }
 
     function totalRecebido(lista) {
-      return lista.reduce((acc, item) => acc + valorNumber(item.valorCobrado), 0);
+      return lista.reduce(function (acc, item) {
+        return acc + valorDoRegistro(item);
+      }, 0);
     }
 
-    function bindEvents(lista) {
+    function bindEvents() {
       root.querySelector("#tr-container").addEventListener("click", function (event) {
         const actionEl = event.target.closest("[data-action]");
         if (!actionEl) return;
@@ -187,6 +149,7 @@
         }
         if (action === "filtro") {
           state.filtroAtivo = actionEl.dataset.value;
+          state.erroPeriodo = "";
           render();
         }
       });
@@ -194,21 +157,38 @@
       const inicioInput = root.querySelector("#tr-data-inicio");
       if (inicioInput) {
         inicioInput.addEventListener("input", function () {
+          state.campoFoco = "inicio";
           state.dataInicio = inicioInput.value;
+          atualizarPeriodoPersonalizado();
         });
       }
 
       const fimInput = root.querySelector("#tr-data-fim");
       if (fimInput) {
         fimInput.addEventListener("input", function () {
+          state.campoFoco = "fim";
           state.dataFim = fimInput.value;
+          atualizarPeriodoPersonalizado();
         });
       }
     }
 
+    function atualizarPeriodoPersonalizado() {
+      if (state.filtroAtivo !== "personalizado") return;
+      const intervalo = getIntervalo(state);
+      if (state.dataInicio && state.dataFim && !intervalo) {
+        state.erroPeriodo = "Informe um período válido (início ≤ fim, formato dd/mm/aaaa).";
+      } else {
+        state.erroPeriodo = "";
+      }
+      render();
+    }
+
     function render() {
+      const intervalo = getIntervalo(state);
       const lista = relatoriosFiltrados();
       const total = totalRecebido(lista);
+      const labelIntervalo = intervalo ? formatarIntervaloLabel(intervalo) : "";
 
       root.innerHTML = `
         <section class="pa-screen">
@@ -262,6 +242,13 @@
                         </div>
                       </div>
                     </div>
+                    ${
+                      state.erroPeriodo
+                        ? `<p style="color:#e74c3c;font-size:12px;margin-top:10px">${escapeHtml(
+                            state.erroPeriodo
+                          )}</p>`
+                        : ""
+                    }
                   </article>
                 `
                 : ""
@@ -273,6 +260,13 @@
               <p style="color:rgba(180,220,255,0.5);font-size:12px;margin-top:6px">
                 ${lista.length} atendimento${lista.length !== 1 ? "s" : ""} concluído${lista.length !== 1 ? "s" : ""}
               </p>
+              ${
+                labelIntervalo
+                  ? `<p style="color:rgba(180,220,255,0.7);font-size:12px;margin-top:8px">${escapeHtml(
+                      labelIntervalo
+                    )}</p>`
+                  : ""
+              }
             </article>
 
             <h2 class="ch-title" style="margin-bottom:12px">Atendimentos</h2>
@@ -300,6 +294,7 @@
                         const dataServico = reg.dataServico || reg.dataFormatada || "-";
                         const dataConclusao = reg.dataConclusao || (reg.dataConclusaoISO ? new Date(reg.dataConclusaoISO).toLocaleDateString("pt-BR") : "-");
                         const tipos = Array.isArray(reg.tipos) ? reg.tipos : reg.tipo ? [reg.tipo] : [];
+                        const valorExibido = formatarValor(valorDoRegistro(reg));
 
                         return `
                           <article style="background:rgba(255,255,255,0.05);border:1px solid rgba(255,255,255,0.08);border-radius:14px;padding:14px;margin-bottom:10px">
@@ -325,7 +320,7 @@
 
                             <div style="margin-top:12px;display:flex;justify-content:space-between;align-items:center;background:rgba(39,174,96,0.08);border:1px solid rgba(39,174,96,0.2);border-radius:8px;padding:10px">
                               <span style="color:rgba(180,220,255,0.6);font-size:13px">Valor cobrado</span>
-                              <strong style="color:#27ae60;font-size:16px">R$ ${escapeHtml(String(reg.valorCobrado || "0,00"))}</strong>
+                              <strong style="color:#27ae60;font-size:16px">R$ ${escapeHtml(valorExibido)}</strong>
                             </div>
                           </article>
                         `;
@@ -339,7 +334,21 @@
       `;
 
       criarFlocosFundo(root.querySelector("#tr-fundos"), "pa");
-      bindEvents(lista);
+      bindEvents();
+
+      if (state.filtroAtivo === "personalizado" && state.campoFoco) {
+        const alvo =
+          state.campoFoco === "inicio"
+            ? root.querySelector("#tr-data-inicio")
+            : root.querySelector("#tr-data-fim");
+        if (alvo) {
+          const pos = alvo.value.length;
+          alvo.focus();
+          try {
+            alvo.setSelectionRange(pos, pos);
+          } catch (error) {}
+        }
+      }
     }
 
     render();
