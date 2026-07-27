@@ -221,6 +221,7 @@
   function renderTelaPainelAdmin(root, props) {
     const state = {
       chamadosPendentes: [],
+      chamadosAceitos: [],
       chamadosAtivos: [],
       chamadosConcluidos: [],
       programados: [],
@@ -351,13 +352,24 @@
     }
 
     function processarChamados(lista) {
-      const visiveis = (lista || []).filter((item) => !item.excluidoPorAdmin);
-      state.chamadosPendentes = ordenarPorAgenda(
-        visiveis.filter((item) => item.status === "Aguardando técnico")
-      );
-      state.chamadosAtivos = ordenarPorAgenda(
-        visiveis.filter((item) => item.status === "Aceito" || item.status === "Em atendimento")
-      );
+      const classificados =
+        window.PainelAdminAbas && typeof window.PainelAdminAbas.classificarChamadosPainel === "function"
+          ? window.PainelAdminAbas.classificarChamadosPainel(lista)
+          : {
+              pendentes: (lista || []).filter(
+                (item) => item && !item.excluidoPorAdmin && item.status === "Aguardando técnico"
+              ),
+              aceitos: (lista || []).filter(
+                (item) => item && !item.excluidoPorAdmin && item.status === "Aceito"
+              ),
+              andamento: (lista || []).filter(
+                (item) => item && !item.excluidoPorAdmin && item.status === "Em atendimento"
+              ),
+            };
+
+      state.chamadosPendentes = ordenarPorAgenda(classificados.pendentes || []);
+      state.chamadosAceitos = ordenarPorAgenda(classificados.aceitos || []);
+      state.chamadosAtivos = ordenarPorAgenda(classificados.andamento || []);
       state.carregando = false;
       render();
     }
@@ -506,9 +518,19 @@
       });
     }
 
+    function todosChamadosPainel() {
+      return [
+        ...state.chamadosPendentes,
+        ...state.chamadosAceitos,
+        ...state.chamadosAtivos,
+        ...state.chamadosConcluidos,
+      ];
+    }
+
     function listaAbaAtual() {
       let lista = [];
       if (state.abaSelecionada === "pendentes") lista = state.chamadosPendentes;
+      else if (state.abaSelecionada === "aceitos") lista = state.chamadosAceitos;
       else if (state.abaSelecionada === "ativos") lista = state.chamadosAtivos;
       else if (state.abaSelecionada === "programados") lista = state.programados;
       else lista = state.chamadosConcluidos;
@@ -516,9 +538,7 @@
     }
 
     async function handleAlterarUrgencia(numero) {
-      const chamado = [...state.chamadosPendentes, ...state.chamadosAtivos, ...state.chamadosConcluidos].find(
-        (item) => item.numero === numero
-      );
+      const chamado = todosChamadosPainel().find((item) => item.numero === numero);
       if (!chamado) return;
       const novaUrgencia = chamado.urgencia === "Urgente" ? "Normal" : "Urgente";
       const ok = await showConfirm(`Deseja marcar o chamado ${numero} como ${novaUrgencia}?`);
@@ -568,9 +588,7 @@
     }
 
     function abrirTelaChamado(numero) {
-      const chamado = [...state.chamadosPendentes, ...state.chamadosAtivos, ...state.chamadosConcluidos].find(
-        (item) => item.numero === numero
-      );
+      const chamado = todosChamadosPainel().find((item) => item.numero === numero);
       if (!chamado) return;
       if (props && typeof props.setChamadoSelecionado === "function") {
         props.setChamadoSelecionado(chamado);
@@ -981,17 +999,21 @@
                 <strong>${state.chamadosPendentes.length}</strong>
                 <span>Pendentes</span>
               </article>
+              <article class="pa-resumo-card is-aceito">
+                <strong>${state.chamadosAceitos.length}</strong>
+                <span>Aceitos</span>
+              </article>
               <article class="pa-resumo-card is-ativo">
                 <strong>${state.chamadosAtivos.length}</strong>
                 <span>Andamento</span>
               </article>
-              <article class="pa-resumo-card is-concluido">
-                <strong>${state.chamadosConcluidos.length}</strong>
-                <span>Concluídos</span>
-              </article>
-              <article class="pa-resumo-card is-programado">
+              <article class="pa-resumo-card is-programado pa-resumo-wide">
                 <strong>${state.programados.length}</strong>
                 <span>Programados</span>
+              </article>
+              <article class="pa-resumo-card is-concluido pa-resumo-wide">
+                <strong>${state.chamadosConcluidos.length}</strong>
+                <span>Histórico</span>
               </article>
             </div>
 
@@ -1010,8 +1032,9 @@
 
             <div class="pa-tabs">
               <button class="pa-tab${state.abaSelecionada === "pendentes" ? " is-active" : ""}" data-action="aba" data-value="pendentes" type="button">Pendentes</button>
+              <button class="pa-tab${state.abaSelecionada === "aceitos" ? " is-active" : ""}" data-action="aba" data-value="aceitos" type="button">Aceito</button>
               <button class="pa-tab${state.abaSelecionada === "ativos" ? " is-active" : ""}" data-action="aba" data-value="ativos" type="button">Andamento</button>
-              <button class="pa-tab${state.abaSelecionada === "programados" ? " is-active" : ""}" data-action="aba" data-value="programados" type="button">Programados</button>
+              <button class="pa-tab${state.abaSelecionada === "programados" ? " is-active" : ""}" data-action="aba" data-value="programados" type="button">Programado</button>
               <button class="pa-tab${state.abaSelecionada === "concluidos" ? " is-active" : ""}" data-action="aba" data-value="concluidos" type="button">Histórico</button>
             </div>
 
