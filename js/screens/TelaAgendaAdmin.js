@@ -38,8 +38,22 @@
     return data.getDay() === 6;
   }
 
+  function isDomingoSafe(data) {
+    if (typeof window.isDomingo === "function") return window.isDomingo(data);
+    return data.getDay() === 0;
+  }
+
+  function isFimDeSemanaSafe(data) {
+    if (window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.isFimDeSemana === "function") {
+      return window.FimDeSemanaAgenda.isFimDeSemana(data);
+    }
+    return isSabadoSafe(data) || isDomingoSafe(data);
+  }
+
   function getProximosDiasSafe() {
-    if (typeof window.getProximosDias === "function") return window.getProximosDias();
+    if (typeof window.getProximosDias === "function") {
+      return window.getProximosDias(undefined, { incluirFimDeSemana: true });
+    }
     const dias = [];
     const hoje = new Date();
     let i = 0;
@@ -47,19 +61,25 @@
       const dia = new Date(hoje);
       dia.setDate(hoje.getDate() + i);
       i += 1;
-      if (dia.getDay() !== 0) dias.push(dia);
+      dias.push(dia);
     }
     return dias;
   }
 
   function formatarDataChaveSafe(data) {
     if (typeof window.formatarDataChave === "function") return window.formatarDataChave(data);
-    return data.toISOString().split("T")[0];
+    if (window.DataLocal && typeof window.DataLocal.formatarDataChaveLocal === "function") {
+      return window.DataLocal.formatarDataChaveLocal(data);
+    }
+    const pad = function (n) {
+      return String(n).padStart(2, "0");
+    };
+    return `${data.getFullYear()}-${pad(data.getMonth() + 1)}-${pad(data.getDate())}`;
   }
 
   function getHorariosDoDiaSafe(data) {
     if (typeof window.getHorariosDoDia === "function") return window.getHorariosDoDia(data);
-    return isSabadoSafe(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
+    return isFimDeSemanaSafe(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
   }
 
   function parseArrayStorage(key) {
@@ -165,7 +185,13 @@
     }
 
     function diaCompleto() {
-      return bloqueiosDia().includes("DIA_COMPLETO");
+      if (!state.diaSelecionado) return false;
+      if (window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.isDiaCompletoBloqueado === "function") {
+        return window.FimDeSemanaAgenda.isDiaCompletoBloqueado(state.diaSelecionado, bloqueiosDia());
+      }
+      if (bloqueiosDia().includes("DIA_COMPLETO")) return true;
+      if (isFimDeSemanaSafe(state.diaSelecionado) && !bloqueiosDia().includes("LIBERADO")) return true;
+      return false;
     }
 
     async function toggleHorario(horario) {
@@ -174,21 +200,23 @@
       state.salvando = true;
       render();
 
-      const bloqueados = bloqueiosDia();
+      const bloqueados = bloqueiosDia().filter(function (item) {
+        return item !== "LIBERADO" && item !== "DIA_COMPLETO";
+      });
       const jaBloqueado = bloqueados.includes(horario);
       try {
+        let atualizados;
         if (jaBloqueado) {
-          await removerBloqueioSafe(chave, horario);
-          updateBloqueioState(
-            state,
-            chave,
-            bloqueados.filter((item) => item !== horario)
-          );
+          atualizados = bloqueados.filter((item) => item !== horario);
         } else {
-          const atualizados = [...bloqueados, horario];
-          await salvarBloqueioSafe(chave, atualizados);
-          updateBloqueioState(state, chave, atualizados);
+          atualizados = [...bloqueados, horario];
         }
+        // Mantém LIBERADO em fim de semana desbloqueado para o cliente continuar vendo o dia
+        if (isFimDeSemanaSafe(state.diaSelecionado)) {
+          atualizados = ["LIBERADO"].concat(atualizados);
+        }
+        await salvarBloqueioSafe(chave, atualizados);
+        updateBloqueioState(state, chave, atualizados);
       } catch (error) {
         window.showAppAlert("Não foi possível concluir o bloqueio agora. Tente novamente.");
       }
@@ -199,14 +227,26 @@
 
     async function toggleDiaCompleto() {
       const chave = chaveAtual();
-      if (!chave) return;
+      if (!chave || !state.diaSelecionado) return;
 
       if (diaCompleto()) {
+        const okLibera = isFimDeSemanaSafe(state.diaSelecionado)
+          ? await showConfirm(
+              "Desbloquear este fim de semana?\nO dia ficará visível para os clientes agendarem."
+            )
+          : true;
+        if (!okLibera) return;
+
         state.salvando = true;
         render();
         try {
-          await removerBloqueioSafe(chave, "DIA_COMPLETO");
-          const atualizados = bloqueiosDia().filter((item) => item !== "DIA_COMPLETO");
+          const atualizados =
+            window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.horariosAposDesbloquearDia === "function"
+              ? window.FimDeSemanaAgenda.horariosAposDesbloquearDia(state.diaSelecionado, bloqueiosDia())
+              : isFimDeSemanaSafe(state.diaSelecionado)
+                ? ["LIBERADO"]
+                : bloqueiosDia().filter((item) => item !== "DIA_COMPLETO");
+          await salvarBloqueioSafe(chave, atualizados);
           updateBloqueioState(state, chave, atualizados);
         } catch (error) {
           window.showAppAlert("Não foi possível concluir o desbloqueio agora. Tente novamente.");
@@ -216,14 +256,22 @@
         return;
       }
 
-      const ok = await showConfirm("Tem certeza que deseja bloquear todos os horários deste dia?");
+      const ok = await showConfirm(
+        isFimDeSemanaSafe(state.diaSelecionado)
+          ? "Bloquear este fim de semana novamente?\nClientes não verão mais este dia."
+          : "Tem certeza que deseja bloquear todos os horários deste dia?"
+      );
       if (!ok) return;
 
       state.salvando = true;
       render();
       try {
-        await salvarBloqueioSafe(chave, ["DIA_COMPLETO"]);
-        updateBloqueioState(state, chave, ["DIA_COMPLETO"]);
+        const atualizados =
+          window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.horariosAposBloquearDiaCompleto === "function"
+            ? window.FimDeSemanaAgenda.horariosAposBloquearDiaCompleto()
+            : ["DIA_COMPLETO"];
+        await salvarBloqueioSafe(chave, atualizados);
+        updateBloqueioState(state, chave, atualizados);
       } catch (error) {
         window.showAppAlert("Não foi possível concluir o bloqueio agora. Tente novamente.");
       }
@@ -269,24 +317,31 @@
           const chave = formatarDataChaveSafe(dia);
           const selecionado = state.diaSelecionado && formatarDataChaveSafe(state.diaSelecionado) === chave;
           const bloqueios = Array.isArray(state.bloqueios[chave]) ? state.bloqueios[chave] : [];
-          const temBloqueio = bloqueios.length > 0;
-          const bloqueioTotal = bloqueios.includes("DIA_COMPLETO");
-          const sabado = isSabadoSafe(dia);
+          const bloqueioTotal =
+            window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.isDiaCompletoBloqueado === "function"
+              ? window.FimDeSemanaAgenda.isDiaCompletoBloqueado(dia, bloqueios)
+              : bloqueios.includes("DIA_COMPLETO") ||
+                (isFimDeSemanaSafe(dia) && !bloqueios.includes("LIBERADO"));
+          const horariosParciais = bloqueios.filter(function (item) {
+            return item !== "DIA_COMPLETO" && item !== "LIBERADO";
+          });
+          const temBloqueioParcial = !bloqueioTotal && horariosParciais.length > 0;
+          const fimDeSemana = isFimDeSemanaSafe(dia);
 
           return `
             <button
-              class="ta-dia-btn${selecionado ? " is-selected" : ""}${bloqueioTotal ? " is-total" : ""}${temBloqueio && !bloqueioTotal ? " is-partial" : ""}"
+              class="ta-dia-btn${selecionado ? " is-selected" : ""}${bloqueioTotal ? " is-total" : ""}${temBloqueioParcial ? " is-partial" : ""}"
               data-action="select-dia"
               data-chave="${chave}"
               type="button"
             >
-              <span class="ta-dia-week${sabado ? " is-sabado" : ""}">
+              <span class="ta-dia-week${fimDeSemana ? " is-sabado" : ""}">
                 ${dia.toLocaleDateString("pt-BR", { weekday: "short" })}
               </span>
               <span class="ta-dia-num">${dia.getDate()}</span>
               <span class="ta-dia-month">${dia.toLocaleDateString("pt-BR", { month: "short" })}</span>
               ${bloqueioTotal ? '<span class="ta-dia-tag total">Bloqueado</span>' : ""}
-              ${temBloqueio && !bloqueioTotal ? '<span class="ta-dia-tag partial">Parcial</span>' : ""}
+              ${temBloqueioParcial ? '<span class="ta-dia-tag partial">Parcial</span>' : ""}
             </button>
           `;
         })
@@ -385,7 +440,7 @@
 
             <div class="ta-alert">
               <span style="font-size:20px">⚠️</span>
-              <span>Horários bloqueados não ficam disponíveis para novos chamados. Ocupados já agendados aparecem marcados.</span>
+              <span>Sábados e domingos ficam bloqueados por padrão. Só o admin pode desbloquear para o cliente ver. Horários bloqueados não ficam disponíveis para novos chamados.</span>
             </div>
 
             <article class="ch-card">

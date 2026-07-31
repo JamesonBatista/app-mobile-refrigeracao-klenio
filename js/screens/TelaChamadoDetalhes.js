@@ -80,7 +80,7 @@
   }
 
   function getProximosDiasSafe() {
-    if (typeof window.getProximosDias === "function") return window.getProximosDias();
+    if (typeof window.getProximosDias === "function") return window.getProximosDias(undefined, { incluirFimDeSemana: true });
     const dias = [];
     const hoje = new Date();
     let offset = 0;
@@ -88,7 +88,7 @@
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + offset);
       offset += 1;
-      if (d.getDay() !== 0) dias.push(d);
+      dias.push(d);
     }
     return dias;
   }

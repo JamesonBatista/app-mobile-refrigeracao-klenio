@@ -71,20 +71,23 @@
     if (typeof window.getProximosDias === "function") {
       return window.getProximosDias();
     }
+    if (window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.getProximosDiasAgenda === "function") {
+      return window.FimDeSemanaAgenda.getProximosDiasAgenda(14, {});
+    }
     const limite =
       typeof window.DIAS_AGENDA_DISPONIVEIS === "number" ? window.DIAS_AGENDA_DISPONIVEIS : 14;
     const dias = [];
     const hoje = new Date();
     let contador = 0;
     let i = 0;
-    while (contador < limite) {
+    while (contador < limite && i < 60) {
       const data = new Date(hoje);
       data.setDate(hoje.getDate() + i);
       i += 1;
-      if (data.getDay() !== 0) {
-        dias.push(data);
-        contador += 1;
-      }
+      // Cliente: sábados e domingos ficam ocultos por padrão
+      if (data.getDay() === 0 || data.getDay() === 6) continue;
+      dias.push(data);
+      contador += 1;
     }
     return dias;
   }
@@ -93,6 +96,8 @@
     if (typeof window.getHorariosDisponiveis === "function") {
       return window.getHorariosDisponiveis(data);
     }
+    // Fallback local: fim de semana sem liberação não tem horários
+    if (data.getDay() === 0 || data.getDay() === 6) return [];
     return isSabado(data) ? HORARIOS_SABADO_PADRAO : HORARIOS_SEMANA_PADRAO;
   }
 
@@ -755,7 +760,7 @@
 
             <article class="ch-card">
               <h2 class="ch-title">Dia do atendimento <span style="color:#e74c3c">*</span></h2>
-              <p class="ch-sub">Selecione um dos próximos 14 dias (2 semanas)</p>
+              <p class="ch-sub">Selecione um dos próximos 14 dias úteis (sáb/dom só se liberados)</p>
               <div class="ab-dias-scroll">
                 ${renderDias()}
               </div>

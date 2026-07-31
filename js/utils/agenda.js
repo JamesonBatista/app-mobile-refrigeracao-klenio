@@ -444,23 +444,44 @@
     return data.getDay() === 6;
   }
 
-  // Quantidade de dias selecionáveis (seg–sáb) exibidos na agenda = 2 semanas.
+  // Quantidade de dias selecionáveis exibidos na agenda = 2 semanas.
   const DIAS_AGENDA_DISPONIVEIS = 14;
+  const MARCADOR_FIM_SEMANA_LIBERADO =
+    (window.FimDeSemanaAgenda && window.FimDeSemanaAgenda.MARCADOR_LIBERADO) || "LIBERADO";
 
-  function getProximosDias(quantidade) {
-    const limite = Number.isFinite(quantidade) && quantidade > 0 ? quantidade : DIAS_AGENDA_DISPONIVEIS;
+  function isFimDeSemana(data) {
+    if (window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.isFimDeSemana === "function") {
+      return window.FimDeSemanaAgenda.isFimDeSemana(data);
+    }
+    return isSabado(data) || isDomingo(data);
+  }
+
+  function getProximosDias(quantidade, options) {
+    let qtd = quantidade;
+    let opts = options && typeof options === "object" ? options : {};
+    if (qtd && typeof qtd === "object" && !Number.isFinite(qtd)) {
+      opts = qtd;
+      qtd = undefined;
+    }
+    const limite = Number.isFinite(qtd) && qtd > 0 ? qtd : DIAS_AGENDA_DISPONIVEIS;
+    if (!opts.bloqueios && !opts.incluirFimDeSemana) {
+      opts = Object.assign({}, opts, { bloqueios: parseObjectStorage(STORAGE_KEYS.bloqueios) });
+    }
+    if (window.FimDeSemanaAgenda && typeof window.FimDeSemanaAgenda.getProximosDiasAgenda === "function") {
+      return window.FimDeSemanaAgenda.getProximosDiasAgenda(limite, opts);
+    }
+    // Fallback: cliente só seg–sex
     const dias = [];
     const hoje = new Date();
     let contador = 0;
     let i = 0;
-    while (contador < limite) {
+    while (contador < limite && i < 60) {
       const data = new Date(hoje);
       data.setDate(hoje.getDate() + i);
       i += 1;
-      if (!isDomingo(data)) {
-        dias.push(data);
-        contador += 1;
-      }
+      if (!opts.incluirFimDeSemana && (isSabado(data) || isDomingo(data))) continue;
+      dias.push(data);
+      contador += 1;
     }
     return dias;
   }
@@ -485,11 +506,11 @@
   }
 
   function getHorariosDoDia(data) {
-    return isSabado(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
+    return isFimDeSemana(data) ? HORARIOS_SABADO : HORARIOS_SEMANA;
   }
 
   function getMaxDia(data) {
-    return isSabado(data) ? MAX_SABADO : MAX_POR_DIA;
+    return isFimDeSemana(data) ? MAX_SABADO : MAX_POR_DIA;
   }
 
   function statusOcupaHorario(item) {
@@ -986,6 +1007,15 @@
 
       chamadosDia = chamadosDia.filter(statusOcupaHorario);
       programadosDia = programadosDia.filter(statusOcupaHorario);
+
+      // Sábado/domingo bloqueados por padrão para cliente (só ADM libera com LIBERADO)
+      if (
+        !ignorarBloqueios &&
+        isFimDeSemana(data) &&
+        !bloqueiosDia.includes(MARCADOR_FIM_SEMANA_LIBERADO)
+      ) {
+        return [];
+      }
 
       const totalOcupacoes = chamadosDia.length + programadosDia.length;
       if ((!ignorarBloqueios && bloqueiosDia.includes("DIA_COMPLETO")) || totalOcupacoes >= maxDia) return [];
@@ -1650,8 +1680,10 @@
     MAX_POR_DIA,
     MAX_SABADO,
     DIAS_AGENDA_DISPONIVEIS,
+    MARCADOR_FIM_SEMANA_LIBERADO,
     isDomingo,
     isSabado,
+    isFimDeSemana,
     getProximosDias,
     formatarData,
     formatarDataChave,
