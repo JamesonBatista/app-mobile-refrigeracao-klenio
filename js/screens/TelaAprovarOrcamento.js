@@ -68,11 +68,12 @@
     const dias = [];
     const hoje = new Date();
     let i = 0;
-    while (dias.length < 14) {
+    while (dias.length < 14 && i < 60) {
       const d = new Date(hoje);
       d.setDate(hoje.getDate() + i);
       i += 1;
-      if (d.getDay() !== 0) dias.push(d);
+      if (d.getDay() === 0 || d.getDay() === 6) continue;
+      dias.push(d);
     }
     return dias;
   }
@@ -81,6 +82,7 @@
     if (typeof window.getHorariosDisponiveis === "function") {
       return window.getHorariosDisponiveis(data);
     }
+    if (data.getDay() === 0 || data.getDay() === 6) return [];
     return isSabado(data)
       ? ["09:00 às 11:00", "11:30 às 13:00"]
       : ["08:00 às 10:00", "10:00 às 12:00", "13:00 às 15:00", "15:00 às 17:00"];
