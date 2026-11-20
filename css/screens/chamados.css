@@ -82,6 +82,13 @@
   font-weight: 700;
 }
 
+.ch-header-actions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex-shrink: 0;
+}
+
 .ch-voltar {
   border: 1px solid rgba(255, 255, 255, 0.1);
   background: rgba(255, 255, 255, 0.06);
@@ -90,6 +97,23 @@
   font-size: 14px;
   padding: 8px 12px;
   cursor: pointer;
+}
+
+.ch-share-btn {
+  border: 1px solid rgba(37, 211, 102, 0.35);
+  background: rgba(37, 211, 102, 0.14);
+  border-radius: 10px;
+  color: #25d366;
+  font-size: 16px;
+  line-height: 1;
+  padding: 8px 10px;
+  cursor: pointer;
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.ch-share-btn:active {
+  opacity: 0.85;
 }
 
 .ch-card {
@@ -1677,6 +1701,40 @@
   color: #e74c3c;
   padding: 4px 8px;
   cursor: pointer;
+}
+
+.pa-share-btn {
+  border-radius: 8px;
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  background: rgba(37, 211, 102, 0.15);
+  color: #25d366;
+  padding: 4px 8px;
+  cursor: pointer;
+  font-size: 14px;
+  line-height: 1;
+  margin-right: auto;
+}
+
+.pa-share-btn:active {
+  opacity: 0.85;
+}
+
+.ad-btn-share {
+  width: 100%;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid rgba(37, 211, 102, 0.4);
+  background: rgba(37, 211, 102, 0.14);
+  color: #25d366;
+  font-size: 15px;
+  font-weight: 600;
+  padding: 12px 14px;
+  cursor: pointer;
+}
+
+.ad-btn-share:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
 }
 
 .pa-historico-toggle {

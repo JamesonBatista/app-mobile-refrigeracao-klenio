@@ -1641,13 +1641,21 @@
       .trim();
   }
 
-  function abrirLinkWhatsApp(numero, mensagem) {
-    if (!numero) return false;
+  function abrirLinkWhatsApp(numero, mensagem, options) {
+    const opts = options && typeof options === "object" ? options : {};
+    const compartilhar = !!opts.compartilhar || !numero;
     const textoBruto = String(mensagem || "");
     const texto = sanitizarMensagemWhatsApp(textoBruto) || textoBruto;
     const encoded = encodeURIComponent(texto);
-    const appUrl = `whatsapp://send?phone=${numero}&text=${encoded}`;
-    const webUrl = `https://wa.me/${numero}?text=${encoded}`;
+    const appUrl = compartilhar
+      ? `whatsapp://send?text=${encoded}`
+      : `whatsapp://send?phone=${numero}&text=${encoded}`;
+    const webUrl = compartilhar
+      ? `https://wa.me/?text=${encoded}`
+      : `https://wa.me/${numero}?text=${encoded}`;
+
+    if (!compartilhar && !numero) return false;
+
     const userAgent = navigator.userAgent || "";
     const isMobile = /Android|iPhone|iPad|iPod|Mobile/i.test(userAgent);
 

@@ -202,6 +202,27 @@
     }
   }
 
+  function compartilharChamadoWhatsApp(chamado) {
+    if (
+      window.CompartilharChamadoWhatsApp &&
+      typeof window.CompartilharChamadoWhatsApp.compartilharChamado === "function"
+    ) {
+      window.CompartilharChamadoWhatsApp.compartilharChamado(chamado);
+      return;
+    }
+    // Fallback mínimo se o util não carregou (sem fotos)
+    const mensagem =
+      window.CompartilharChamadoWhatsApp &&
+      typeof window.CompartilharChamadoWhatsApp.montarMensagemChamado === "function"
+        ? window.CompartilharChamadoWhatsApp.montarMensagemChamado(chamado)
+        : `❄ *Klenio Refrigeração — Chamado*\n\n🔢 Número: ${(chamado && chamado.numero) || "-"}\n📌 Status: ${(chamado && chamado.status) || "-"}\n👤 Cliente: ${(chamado && chamado.cliente) || "-"}\n📱 Telefone: ${(chamado && chamado.clienteTelefone) || "Não informado"}\n📅 Data: ${(chamado && chamado.dataFormatada) || "-"} • ${(chamado && chamado.horario) || "-"}\n📍 Endereço: ${(chamado && chamado.endereco) || "-"}\n✉️ E-mail: ${(chamado && chamado.clienteEmail) || "-"}\n📝 Detalhes: ${(chamado && chamado.detalhes) || "-"}\n👷 Técnico: ${(chamado && chamado.tecnico) || "-"}\n\nCompartilhado pelo painel admin ❄`;
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(null, mensagem, { compartilhar: true });
+      return;
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, "_blank");
+  }
+
   async function showConfirm(message) {
     return window.showAppConfirm(message);
   }
@@ -748,7 +769,18 @@
             <span class="ch-header-empresa">Klenio Refrigeração</span>
             <h1 class="ch-header-nome">Detalhes do Chamado</h1>
           </div>
-          <button class="ch-voltar" data-action="voltar" type="button">← Voltar</button>
+          <div class="ch-header-actions">
+            <button
+              class="ch-share-btn"
+              data-action="compartilhar-whatsapp"
+              type="button"
+              title="Compartilhar no WhatsApp"
+              aria-label="Compartilhar chamado no WhatsApp"
+            >
+              <span aria-hidden="true">📤</span>
+            </button>
+            <button class="ch-voltar" data-action="voltar" type="button">← Voltar</button>
+          </div>
         </header>
 
         ${
@@ -978,6 +1010,15 @@
             `
             : ""
         }
+
+        <button
+          class="ad-btn-share"
+          data-action="compartilhar-whatsapp"
+          type="button"
+          ${state.salvando ? "disabled" : ""}
+        >
+          📤 Compartilhar no WhatsApp
+        </button>
       `;
     }
 
@@ -990,6 +1031,10 @@
 
         if (action === "voltar") {
           if (props && typeof props.setTela === "function") props.setTela("painelAdmin");
+          return;
+        }
+        if (action === "compartilhar-whatsapp") {
+          if (state.chamado) compartilharChamadoWhatsApp(state.chamado);
           return;
         }
         if (action === "aceitar") {
