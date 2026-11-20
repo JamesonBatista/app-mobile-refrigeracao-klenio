@@ -190,6 +190,32 @@
     }
   }
 
+  function compartilharChamadoWhatsApp(chamado) {
+    if (
+      window.CompartilharChamadoWhatsApp &&
+      typeof window.CompartilharChamadoWhatsApp.compartilharChamado === "function"
+    ) {
+      window.CompartilharChamadoWhatsApp.compartilharChamado(chamado);
+      return;
+    }
+    const tipos = Array.isArray(chamado && chamado.tipos) ? chamado.tipos.filter(Boolean) : [];
+    const mensagem =
+      `❄ *Klenio Refrigeração — Chamado*\n\n` +
+      `🔢 Número: ${(chamado && chamado.numero) || "-"}\n` +
+      `📌 Status: ${(chamado && chamado.status) || "-"}\n` +
+      `👤 Cliente: ${(chamado && chamado.cliente) || "-"}\n` +
+      `📱 Telefone: ${(chamado && chamado.clienteTelefone) || "Não informado"}\n` +
+      `📅 Data: ${(chamado && chamado.dataFormatada) || "-"} • ${(chamado && chamado.horario) || "-"}\n` +
+      `📍 Endereço: ${(chamado && chamado.endereco) || "-"}` +
+      (tipos.length ? `\n🛠️ Problemas: ${tipos.join(", ")}` : "") +
+      `\n\nCompartilhado pelo painel admin ❄`;
+    if (typeof window.abrirLinkWhatsApp === "function") {
+      window.abrirLinkWhatsApp(null, mensagem, { compartilhar: true });
+      return;
+    }
+    window.open(`https://wa.me/?text=${encodeURIComponent(mensagem)}`, "_blank");
+  }
+
   async function showConfirm(message) {
     return window.showAppConfirm(message);
   }
@@ -682,6 +708,16 @@
           </div>
 
           <div class="pa-card-foot">
+            <button
+              class="pa-share-btn"
+              data-action="compartilhar-chamado"
+              data-numero="${escapeHtml(chamado.numero)}"
+              type="button"
+              title="Compartilhar no WhatsApp"
+              aria-label="Compartilhar chamado no WhatsApp"
+            >
+              📤
+            </button>
             <span class="pa-link">Ver detalhes →</span>
             ${
               state.abaSelecionada === "concluidos"
@@ -866,6 +902,18 @@
 
         if (action === "excluir-chamado") {
           handleExcluirChamado(actionEl.dataset.numero);
+          return;
+        }
+
+        if (action === "compartilhar-chamado") {
+          const numero = actionEl.dataset.numero;
+          const chamado =
+            state.chamadosPendentes.find((item) => item.numero === numero) ||
+            state.chamadosAceitos.find((item) => item.numero === numero) ||
+            state.chamadosAtivos.find((item) => item.numero === numero) ||
+            state.chamadosConcluidos.find((item) => item.numero === numero) ||
+            null;
+          if (chamado) compartilharChamadoWhatsApp(chamado);
           return;
         }
 
