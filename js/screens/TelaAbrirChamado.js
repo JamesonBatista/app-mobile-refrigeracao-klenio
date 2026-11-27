@@ -354,6 +354,22 @@
       state.carregando = true;
       render();
 
+      // Revalida no envio: o admin pode ter bloqueado o dia/horário com a tela já aberta
+      try {
+        const horariosAtuais = await getHorariosDisponiveisSafe(state.diaSelecionado);
+        if (!Array.isArray(horariosAtuais) || !horariosAtuais.includes(state.horario)) {
+          state.horariosDisponiveis = Array.isArray(horariosAtuais) ? horariosAtuais : [];
+          state.horario = null;
+          state.carregando = false;
+          render();
+          window.showAppAlert("Horário indisponível ❄\nEsse horário não está mais disponível. Escolha outro dia ou horário.");
+          verificarDiasLotados();
+          return;
+        }
+      } catch (errorRevalidacao) {
+        console.log("Erro ao revalidar horário:", errorRevalidacao);
+      }
+
       const agora = new Date();
       const dataAbertura = agora.toLocaleDateString("pt-BR");
       const horaAbertura = agora.toLocaleTimeString("pt-BR", {

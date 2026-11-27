@@ -159,6 +159,35 @@
     return window.showAppConfirm(message);
   }
 
+  function escapeAttr(value) {
+    return String(value == null ? "" : value)
+      .replaceAll("&", "&amp;")
+      .replaceAll('"', "&quot;")
+      .replaceAll("<", "&lt;")
+      .replaceAll(">", "&gt;");
+  }
+
+  function hojeChaveSafe() {
+    return formatarDataChaveSafe(new Date());
+  }
+
+  function horariosPossiveisPeriodo() {
+    return Array.from(new Set(HORARIOS_SEMANA.concat(HORARIOS_SABADO)));
+  }
+
+  async function gravarBloqueiosEmLote(atualizacoes) {
+    const chaves = Object.keys(atualizacoes);
+    const TAMANHO_LOTE = 10;
+    for (let i = 0; i < chaves.length; i += TAMANHO_LOTE) {
+      const lote = chaves.slice(i, i + TAMANHO_LOTE);
+      await Promise.all(
+        lote.map(function (chave) {
+          return salvarBloqueioSafe(chave, atualizacoes[chave]);
+        })
+      );
+    }
+  }
+
   function renderTelaAgendaAdmin(root, props) {
     const state = {
       dias: [],
@@ -168,6 +197,7 @@
       carregando: true,
       salvando: false,
       unsubscribe: null,
+      periodo: { inicio: "", fim: "", modo: "dia", horarios: [] },
     };
 
     function chaveAtual() {
@@ -279,9 +309,103 @@
       render();
     }
 
+    function descricaoHorariosPeriodo(horarios, diaCompleto) {
+      if (diaCompleto) return "Dia inteiro";
+      return horarios.join(", ");
+    }
+
+    async function aplicarAtualizacoesPeriodo(atualizacoes, mensagemErro) {
+      state.salvando = true;
+      render();
+      try {
+        await gravarBloqueiosEmLote(atualizacoes);
+        Object.keys(atualizacoes).forEach(function (chave) {
+          updateBloqueioState(state, chave, atualizacoes[chave]);
+        });
+        return true;
+      } catch (error) {
+        window.showAppAlert(mensagemErro);
+        return false;
+      } finally {
+        state.salvando = false;
+        render();
+      }
+    }
+
+    async function bloquearPeriodo() {
+      const periodo = state.periodo;
+      const validacao = window.BloqueioPeriodo.validarPeriodo(periodo.inicio, periodo.fim, hojeChaveSafe());
+      if (!validacao.ok) {
+        window.showAppAlert(validacao.erro);
+        return;
+      }
+      const horarios = periodo.modo === "horarios" ? periodo.horarios : [];
+      if (periodo.modo === "horarios" && horarios.length === 0) {
+        window.showAppAlert("Selecione ao menos um horário para bloquear.");
+        return;
+      }
+
+      let inicio = periodo.inicio;
+      if (inicio < hojeChaveSafe()) inicio = hojeChaveSafe();
+      const chaves = window.BloqueioPeriodo.listarChavesPeriodo(inicio, periodo.fim);
+      const atualizacoes = window.BloqueioPeriodo.calcularBloqueioPeriodo(state.bloqueios, chaves, horarios);
+      if (Object.keys(atualizacoes).length === 0) {
+        window.showAppAlert("Nenhuma alteração: esse período já está bloqueado.");
+        return;
+      }
+
+      const ok = await showConfirm(
+        `Bloquear ${window.BloqueioPeriodo.formatarChaveBR(inicio)} a ${window.BloqueioPeriodo.formatarChaveBR(periodo.fim)} (${descricaoHorariosPeriodo(horarios, horarios.length === 0)})?\nClientes não poderão abrir chamados nesse período. Chamados já agendados não são cancelados.`
+      );
+      if (!ok) return;
+
+      const salvou = await aplicarAtualizacoesPeriodo(
+        atualizacoes,
+        "Não foi possível bloquear o período agora. Tente novamente."
+      );
+      if (salvou) {
+        state.periodo = { inicio: "", fim: "", modo: "dia", horarios: [] };
+        render();
+        window.showAppAlert("Período bloqueado ❄\nOs clientes não poderão mais abrir chamados nesse período.");
+      }
+    }
+
+    async function desbloquearGrupo(inicio, fim, assinatura) {
+      const grupo = window.BloqueioPeriodo.agruparPeriodosBloqueados(state.bloqueios, hojeChaveSafe()).find(
+        function (item) {
+          return item.inicio === inicio && item.fim === fim && item.assinatura === assinatura;
+        }
+      );
+      if (!grupo) return;
+      const ok = await showConfirm(
+        `Desbloquear ${window.BloqueioPeriodo.formatarChaveBR(grupo.inicio)} a ${window.BloqueioPeriodo.formatarChaveBR(grupo.fim)}?\nClientes poderão voltar a abrir chamados nesse período.`
+      );
+      if (!ok) return;
+      const chaves = window.BloqueioPeriodo.listarChavesPeriodo(grupo.inicio, grupo.fim);
+      const itens = (grupo.diaCompleto ? [window.BloqueioPeriodo.DIA_COMPLETO] : []).concat(grupo.horarios);
+      const atualizacoes = window.BloqueioPeriodo.calcularDesbloqueioPeriodo(state.bloqueios, chaves, itens);
+      await aplicarAtualizacoesPeriodo(
+        atualizacoes,
+        "Não foi possível desbloquear o período agora. Tente novamente."
+      );
+    }
+
     function bindEvents() {
       const container = root.querySelector("#ta-container");
       if (!container) return;
+
+      container.addEventListener("change", function (event) {
+        const campo = event.target.closest("[data-field]");
+        if (!campo) return;
+        if (campo.dataset.field === "periodo-inicio") {
+          state.periodo.inicio = campo.value;
+          if (state.periodo.fim && state.periodo.fim < campo.value) state.periodo.fim = campo.value;
+          if (!state.periodo.fim) state.periodo.fim = campo.value;
+          render();
+        } else if (campo.dataset.field === "periodo-fim") {
+          state.periodo.fim = campo.value;
+        }
+      });
 
       container.addEventListener("click", function (event) {
         const actionEl = event.target.closest("[data-action]");
@@ -307,6 +431,30 @@
         }
         if (action === "toggle-horario") {
           toggleHorario(actionEl.dataset.horario);
+          return;
+        }
+        if (action === "periodo-modo") {
+          state.periodo.modo = actionEl.dataset.modo === "horarios" ? "horarios" : "dia";
+          render();
+          return;
+        }
+        if (action === "periodo-horario") {
+          const horario = actionEl.dataset.horario;
+          const atual = state.periodo.horarios;
+          state.periodo.horarios = atual.includes(horario)
+            ? atual.filter((item) => item !== horario)
+            : atual.concat([horario]);
+          render();
+          return;
+        }
+        if (action === "bloquear-periodo") {
+          if (!state.salvando) bloquearPeriodo();
+          return;
+        }
+        if (action === "desbloquear-grupo") {
+          if (!state.salvando) {
+            desbloquearGrupo(actionEl.dataset.inicio, actionEl.dataset.fim, actionEl.dataset.assinatura);
+          }
         }
       });
     }
@@ -346,6 +494,88 @@
           `;
         })
         .join("");
+    }
+
+    function renderPeriodoBloqueio() {
+      const periodo = state.periodo;
+      const hoje = hojeChaveSafe();
+      const porHorario = periodo.modo === "horarios";
+      return `
+        <article class="ch-card ta-card ta-periodo-card">
+          <div class="ta-horario-head">
+            <span>
+              <h2 class="ch-title">Bloquear período</h2>
+              <p class="ch-sub">Escolha qualquer intervalo de datas, mesmo além dos próximos dias.</p>
+            </span>
+            ${state.salvando ? '<div class="ch-spinner" style="margin:0"></div>' : ""}
+          </div>
+
+          <div class="ta-periodo-datas">
+            <label class="ta-periodo-campo">
+              <span>De</span>
+              <input type="date" data-field="periodo-inicio" min="${hoje}" value="${escapeAttr(periodo.inicio)}" />
+            </label>
+            <label class="ta-periodo-campo">
+              <span>Até</span>
+              <input type="date" data-field="periodo-fim" min="${escapeAttr(periodo.inicio || hoje)}" value="${escapeAttr(periodo.fim)}" />
+            </label>
+          </div>
+
+          <div class="ta-periodo-modos">
+            <button class="ta-periodo-modo${porHorario ? "" : " is-active"}" data-action="periodo-modo" data-modo="dia" type="button">Dia inteiro</button>
+            <button class="ta-periodo-modo${porHorario ? " is-active" : ""}" data-action="periodo-modo" data-modo="horarios" type="button">Horários específicos</button>
+          </div>
+
+          ${
+            porHorario
+              ? `<div class="ta-periodo-horarios">${horariosPossiveisPeriodo()
+                  .map(function (horario) {
+                    const ativo = periodo.horarios.includes(horario);
+                    return `<button class="ta-periodo-chip${ativo ? " is-active" : ""}" data-action="periodo-horario" data-horario="${escapeAttr(horario)}" type="button">${horario}</button>`;
+                  })
+                  .join("")}</div>`
+              : ""
+          }
+
+          <button class="ta-dia-completo-btn is-active" data-action="bloquear-periodo" type="button" ${state.salvando ? "disabled" : ""}>
+            <span>🔒</span>
+            <span>Bloquear período</span>
+          </button>
+
+          ${renderPeriodosBloqueados()}
+        </article>
+      `;
+    }
+
+    function renderPeriodosBloqueados() {
+      if (!window.BloqueioPeriodo) return "";
+      const grupos = window.BloqueioPeriodo.agruparPeriodosBloqueados(state.bloqueios, hojeChaveSafe());
+      if (grupos.length === 0) {
+        return '<p class="ch-sub ta-periodo-vazio">Nenhum período bloqueado no momento.</p>';
+      }
+      return `
+        <h3 class="ta-periodo-lista-titulo">Períodos bloqueados</h3>
+        <div class="ta-periodo-lista">
+          ${grupos
+            .map(function (grupo) {
+              const rotulo =
+                grupo.inicio === grupo.fim
+                  ? window.BloqueioPeriodo.formatarChaveBR(grupo.inicio)
+                  : `${window.BloqueioPeriodo.formatarChaveBR(grupo.inicio)} a ${window.BloqueioPeriodo.formatarChaveBR(grupo.fim)}`;
+              const detalhe = descricaoHorariosPeriodo(grupo.horarios, grupo.diaCompleto);
+              return `
+                <div class="ta-periodo-item">
+                  <span class="ta-periodo-item-info">
+                    <strong>${rotulo}</strong>
+                    <small>${grupo.diaCompleto && grupo.horarios.length > 0 ? `Dia inteiro + ${grupo.horarios.join(", ")}` : detalhe}</small>
+                  </span>
+                  <button class="ta-periodo-remover" data-action="desbloquear-grupo" data-inicio="${grupo.inicio}" data-fim="${grupo.fim}" data-assinatura="${escapeAttr(grupo.assinatura)}" type="button" ${state.salvando ? "disabled" : ""}>Desbloquear</button>
+                </div>
+              `;
+            })
+            .join("")}
+        </div>
+      `;
     }
 
     function renderHorarios() {
@@ -426,6 +656,8 @@
     }
 
     function render() {
+      const scrollAnterior = root.querySelector("#ta-container");
+      const scrollTop = scrollAnterior ? scrollAnterior.scrollTop : 0;
       root.innerHTML = `
         <section class="ta-screen">
           <div class="ta-fundos" id="ta-fundos"></div>
@@ -440,7 +672,7 @@
 
             <div class="ta-alert">
               <span style="font-size:20px">⚠️</span>
-              <span>Sábados e domingos ficam bloqueados por padrão. Só o admin pode desbloquear para o cliente ver. Horários bloqueados não ficam disponíveis para novos chamados.</span>
+              <span>Sábados e domingos ficam bloqueados por padrão. Só o admin pode desbloquear para o cliente ver. Horários e períodos bloqueados não ficam disponíveis para novos chamados.</span>
             </div>
 
             <article class="ch-card">
@@ -451,6 +683,7 @@
             </article>
 
             ${renderHorarios()}
+            ${renderPeriodoBloqueio()}
             <div style="height:20px"></div>
           </div>
         </section>
@@ -458,6 +691,8 @@
 
       criarFlocosFundo(root.querySelector("#ta-fundos"), "ta");
       bindEvents();
+      const novoContainer = root.querySelector("#ta-container");
+      if (novoContainer && scrollTop > 0) novoContainer.scrollTop = scrollTop;
     }
 
     render();
@@ -465,10 +700,13 @@
     state.diaSelecionado = state.dias[0] || null;
     state.ocupacao = carregarOcupacaoLocal();
     state.unsubscribe = ouvirBloqueiosSafe(function (dados) {
-      state.bloqueios = dados || {};
+      const novos = dados || {};
+      const mudou = JSON.stringify(novos) !== JSON.stringify(state.bloqueios);
+      const eraCarregando = state.carregando;
+      state.bloqueios = novos;
       state.ocupacao = carregarOcupacaoLocal();
       state.carregando = false;
-      render();
+      if (mudou || eraCarregando) render();
     });
     render();
 
