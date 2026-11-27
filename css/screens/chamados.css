@@ -2706,6 +2706,137 @@
   color: #f39c12;
 }
 
+.ta-periodo-datas {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin-bottom: 14px;
+}
+
+.ta-periodo-campo {
+  display: grid;
+  gap: 6px;
+  color: rgba(180, 220, 255, 0.7);
+  font-size: 12px;
+  min-width: 0;
+}
+
+.ta-periodo-campo input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  color-scheme: dark;
+  font-size: 14px;
+  padding: 10px;
+}
+
+.ta-periodo-modos {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ta-periodo-modo {
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(180, 220, 255, 0.8);
+  font-size: 13px;
+  font-weight: 600;
+  padding: 10px;
+  cursor: pointer;
+}
+
+.ta-periodo-modo.is-active {
+  border-color: #38b6ff;
+  background: rgba(56, 182, 255, 0.15);
+  color: #38b6ff;
+}
+
+.ta-periodo-horarios {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.ta-periodo-chip {
+  border-radius: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(180, 220, 255, 0.8);
+  font-size: 12px;
+  font-weight: 600;
+  padding: 8px 12px;
+  cursor: pointer;
+}
+
+.ta-periodo-chip.is-active {
+  border-color: #e74c3c;
+  background: rgba(231, 76, 60, 0.15);
+  color: #e74c3c;
+}
+
+.ta-periodo-lista-titulo {
+  color: #fff;
+  font-size: 14px;
+  margin: 4px 0 10px;
+}
+
+.ta-periodo-vazio {
+  margin: 0;
+}
+
+.ta-periodo-lista {
+  display: grid;
+  gap: 8px;
+}
+
+.ta-periodo-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  border-radius: 10px;
+  border: 1px solid rgba(231, 76, 60, 0.35);
+  background: rgba(231, 76, 60, 0.08);
+  padding: 10px 12px;
+}
+
+.ta-periodo-item-info {
+  display: grid;
+  gap: 2px;
+  min-width: 0;
+  color: #fff;
+  font-size: 13px;
+}
+
+.ta-periodo-item-info small {
+  color: rgba(180, 220, 255, 0.7);
+  font-size: 11px;
+}
+
+.ta-periodo-remover {
+  flex-shrink: 0;
+  border-radius: 8px;
+  border: 1px solid rgba(39, 174, 96, 0.5);
+  background: rgba(39, 174, 96, 0.12);
+  color: #27ae60;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 10px;
+  cursor: pointer;
+}
+
+.ta-periodo-remover:disabled {
+  opacity: 0.5;
+}
+
 .ap-screen,
 .coa-screen {
   position: relative;
